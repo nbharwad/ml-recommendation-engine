@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'delivery_address.dart';
+
 enum OrderStatus {
   pending,
   confirmed,
@@ -110,7 +112,7 @@ class OrderModel {
   final String userId;
   final String userPhone;
   final String userName;
-  final String deliveryAddress;
+  final DeliveryAddress deliveryAddress;
   final List<OrderItem> items;
   final String? prescriptionUrl;
   final double totalAmount;
@@ -148,7 +150,7 @@ class OrderModel {
       userId: data['userId'] ?? '',
       userPhone: data['userPhone'] ?? '',
       userName: data['userName'] ?? '',
-      deliveryAddress: data['deliveryAddress'] ?? '',
+      deliveryAddress: DeliveryAddress.fromFirestoreData(data['deliveryAddress']),
       items: (data['items'] as List?)
               ?.map((e) => OrderItem.fromMap(e as Map<String, dynamic>))
               .toList() ??
@@ -175,7 +177,7 @@ class OrderModel {
       'userId': userId,
       'userPhone': userPhone,
       'userName': userName,
-      'deliveryAddress': deliveryAddress,
+      'deliveryAddress': deliveryAddress.toMap(),
       'items': items.map((e) => e.toMap()).toList(),
       'prescriptionUrl': prescriptionUrl,
       'totalAmount': totalAmount,
@@ -195,7 +197,7 @@ class OrderModel {
     String? userId,
     String? userPhone,
     String? userName,
-    String? deliveryAddress,
+    DeliveryAddress? deliveryAddress,
     List<OrderItem>? items,
     String? prescriptionUrl,
     double? totalAmount,

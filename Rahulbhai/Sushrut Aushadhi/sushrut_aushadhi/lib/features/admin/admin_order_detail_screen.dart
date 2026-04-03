@@ -284,7 +284,7 @@ class _AdminOrderDetailScreenState extends ConsumerState<AdminOrderDetailScreen>
               ],
             ),
             const SizedBox(height: 12),
-            Text(order.deliveryAddress),
+            Text(order.deliveryAddress.toDisplayString()),
           ],
         ),
       ),

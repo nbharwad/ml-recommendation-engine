@@ -730,7 +730,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         userId: authUser.uid,
         userPhone: user.phone,
         userName: user.name.isNotEmpty ? user.name : 'Customer',
-        deliveryAddress: user.address.isNotEmpty ? user.address : 'Address not provided',
+        deliveryAddress: user.deliveryAddress,
         items: orderItemsList,
         totalAmount: cartTotal,
         createdAt: DateTime.now(),

@@ -66,11 +66,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       // evaluates the admin guard. Without this, returning admins get isAdmin=false.
       await user.getIdTokenResult(true);
       ref.invalidate(roleProvider);
-      if (!mounted) return;
-      context.go('/home');
-    } else {
-      context.go('/login');
     }
+
+    // Wait until authReadyProvider is true (role future settled), max 5s.
+    const maxWait = Duration(seconds: 5);
+    final deadline = DateTime.now().add(maxWait);
+    while (!ref.read(authReadyProvider)) {
+      if (DateTime.now().isAfter(deadline)) break;
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (!mounted) return;
+    }
+
+    if (!mounted) return;
+    context.go(user != null ? '/home' : '/login');
   }
 
   @override

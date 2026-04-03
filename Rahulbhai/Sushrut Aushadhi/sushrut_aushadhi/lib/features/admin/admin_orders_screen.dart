@@ -581,10 +581,10 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                     fontSize: 11,
                   ),
                 ),
-                if (order.deliveryAddress.isNotEmpty) ...[
+                if (!order.deliveryAddress.isEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    order.deliveryAddress,
+                    order.deliveryAddress.toDisplayString(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.sora(

@@ -99,7 +99,6 @@ class FirestoreService {
     await _rateLimit.checkOrderRateLimit(order.userId);
 
     final sanitizedName = _sanitizeString(order.userName);
-    final sanitizedAddress = _sanitizeString(order.deliveryAddress);
     final sanitizedNotes = order.notes != null ? _sanitizeString(order.notes!) : null;
 
     final orderId = order.orderId.isNotEmpty ? order.orderId : placeOrderId();
@@ -108,7 +107,7 @@ class FirestoreService {
       userId: order.userId,
       userPhone: order.userPhone,
       userName: sanitizedName,
-      deliveryAddress: sanitizedAddress,
+      deliveryAddress: order.deliveryAddress,
       items: order.items,
       prescriptionUrl: order.prescriptionUrl,
       totalAmount: order.totalAmount,
@@ -159,6 +158,28 @@ class FirestoreService {
           .map((doc) => OrderModel.fromFirestore(doc.data(), doc.id))
           .toList();
     });
+  }
+
+  Future<({List<OrderModel> orders, DocumentSnapshot? lastDoc})> getOrdersPaginated({
+    DocumentSnapshot? lastDoc,
+    int limit = 20,
+  }) async {
+    Query<Map<String, dynamic>> query = _db
+        .collection('orders')
+        .orderBy('createdAt', descending: true)
+        .limit(limit);
+
+    if (lastDoc != null) {
+      query = query.startAfterDocument(lastDoc);
+    }
+
+    final snapshot = await query.get();
+    return (
+      orders: snapshot.docs
+          .map((doc) => OrderModel.fromFirestore(doc.data(), doc.id))
+          .toList(),
+      lastDoc: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+    );
   }
 
   Stream<List<OrderModel>> getOrdersByStatus(String status) {

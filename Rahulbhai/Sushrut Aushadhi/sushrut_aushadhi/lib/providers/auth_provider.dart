@@ -39,3 +39,14 @@ final isAdminProvider = Provider<bool>((ref) {
     orElse: () => false,
   );
 });
+
+/// True only after the auth stream has emitted at least once AND the role
+/// future has settled. Used by the splash screen to prevent premature routing.
+final authReadyProvider = Provider<bool>((ref) {
+  final authAsync = ref.watch(authStateProvider);
+  if (authAsync is AsyncLoading) return false;
+  final user = authAsync.valueOrNull;
+  if (user == null) return true;
+  final roleAsync = ref.watch(roleProvider);
+  return roleAsync is! AsyncLoading;
+});
