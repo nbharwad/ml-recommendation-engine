@@ -1,0 +1,110 @@
+{
+  "categories": [
+    {"id": "fever", "name": "Fever & Cold", "emoji": "\ud83e\udd12"},
+    {"id": "pain", "name": "Pain Relief", "emoji": "\ud83d\udc8a"},
+    {"id": "skin", "name": "Skin Care", "emoji": "\ud83e\uddf4"},
+    {"id": "diabetes", "name": "Diabetes", "emoji": "\ud83e\ude78"},
+    {"id": "heart", "name": "Heart Care", "emoji": "\ud83e\udec0"},
+    {"id": "vitamins", "name": "Vitamins", "emoji": "\ud83d\udcaa"}
+  ],
+  "medicines": [
+    {
+      "id": "1",
+      "name": "Dolo 650mg",
+      "brand": "Micro Labs",
+      "category": "fever",
+      "price": 30.0,
+      "mrp": 38.0,
+      "emoji": "\ud83d\udc8a",
+      "requiresPrescription": false,
+      "description": "Paracetamol tablet for fever and pain relief"
+    },
+    {
+      "id": "2",
+      "name": "Amoxicillin 500mg",
+      "brand": "Sun Pharma",
+      "category": "pain",
+      "price": 85.0,
+      "mrp": 95.0,
+      "emoji": "\ud83e\uddf4",
+      "requiresPrescription": true,
+      "description": "Antibiotic for bacterial infections"
+    },
+    {
+      "id": "3",
+      "name": "Vitamin D3 Sachet",
+      "brand": "Dr. Reddy's",
+      "category": "vitamins",
+      "price": 45.0,
+      "mrp": 55.0,
+      "emoji": "\ud83e\udee7",
+      "requiresPrescription": false,
+      "description": "Vitamin D3 supplement sachet"
+    },
+    {
+      "id": "4",
+      "name": "Ibuprofen 400mg",
+      "brand": "Abbott",
+      "category": "pain",
+      "price": 22.0,
+      "mrp": 25.0,
+      "emoji": "\ud83d\udc89",
+      "requiresPrescription": false,
+      "description": "Anti-inflammatory pain relief tablet"
+    },
+    {
+      "id": "5",
+      "name": "Cetrizine 10mg",
+      "brand": "Cipla",
+      "category": "fever",
+      "price": 18.0,
+      "mrp": 22.0,
+      "emoji": "\ud83d\udc8a",
+      "requiresPrescription": false,
+      "description": "Antihistamine for allergies"
+    },
+    {
+      "id": "6",
+      "name": "Metformin 500mg",
+      "brand": "USV",
+      "category": "diabetes",
+      "price": 35.0,
+      "mrp": 42.0,
+      "emoji": "\ud83e\ude78",
+      "requiresPrescription": true,
+      "description": "Diabetes management tablet"
+    }
+  ],
+  "banners": [
+    {
+      "title": "Get medicines in 2 hrs",
+      "subtitle": "Upload prescription or browse directly",
+      "tag": "New Customer Offer",
+      "btnText": "Order Now"
+    },
+    {
+      "title": "20% off on Vitamins",
+      "subtitle": "Stock up on your daily essentials",
+      "tag": "Weekend Special",
+      "btnText": "Shop Now"
+    }
+  ],
+  "healthTips": [
+    {
+      "emoji": "\ud83c\udf05",
+      "title": "Take Vitamins in the Morning",
+      "tip": "Best absorbed with breakfast for maximum benefit."
+    },
+    {
+      "emoji": "\ud83d\udca7",
+      "title": "Stay Hydrated Daily",
+      "tip": "Drink 8 glasses of water to support medicine absorption."
+    },
+    {
+      "emoji": "\ud83e\ude78",
+      "title": "Regular Check-ups",
+      "tip": "Get BP and sugar checked every 3 months."
+    }
+  ]
+}
+
