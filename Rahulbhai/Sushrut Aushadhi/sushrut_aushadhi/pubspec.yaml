@@ -1,0 +1,67 @@
+name: sushrut_aushadhi
+description: Medicine ordering app for Sushrut Aushadhi pharmacy
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.8
+  cloud_firestore: ^4.15.8
+  firebase_storage: ^11.6.9
+  firebase_messaging: ^14.7.20
+  firebase_crashlytics: ^3.4.18
+  firebase_app_check: ^0.2.1+3
+  firebase_performance: ^0.9.0+3
+  firebase_analytics: ^10.8.0
+  cloud_functions: ^4.6.0
+  flutter_local_notifications: ^17.0.0
+
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  go_router: ^13.2.0
+
+  image_picker: ^1.0.7
+  flutter_image_compress: ^2.1.0
+  photo_view: ^0.15.0
+  cached_network_image: ^3.3.1
+  file_picker: ^8.0.0
+  share_plus: ^9.0.0
+
+  flutter_svg: ^2.0.10+1
+  lottie: ^3.1.0
+  shimmer: ^3.0.0
+
+  google_fonts: ^6.1.0
+
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  shared_preferences: ^2.2.3
+  permission_handler: ^11.3.1
+  url_launcher: ^6.2.6
+  connectivity_plus: ^5.0.2
+  http: ^1.2.0
+  path_provider: ^2.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.3.9
+  mocktail: ^1.0.3
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/medicines.json
+    - assets/images/
+    - assets/icons/
