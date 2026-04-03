@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isDelivery() {
+      return isSignedIn() && request.auth.token.role == 'delivery';
+    }
+
+    function isAdminOrDelivery() {
+      return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.role == 'delivery');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserData() {
+      let allowedKeys = ['name', 'phone', 'address', 'pincode', 'fcmToken', 'createdAt'];
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    function isValidOrderData() {
+      let allowedKeys = ['orderId', 'userId', 'userPhone', 'userName', 'deliveryAddress',
+                        'items', 'prescriptionUrl', 'totalAmount', 'status', 'paymentMethod',
+                        'paymentStatus', 'notes', 'rating', 'createdAt', 'updatedAt', 'statusHistory'];
+      let hasValidKeys = request.resource.data.keys().hasOnly(allowedKeys);
+      let userIdMatches = request.resource.data.userId == request.auth.uid;
+      let amount = request.resource.data.totalAmount;
+      let validAmount = amount is number && amount >= 0 && amount <= 100000;
+      return hasValidKeys && userIdMatches && validAmount;
+    }
+
+    function isValidPrescriptionData() {
+      let allowedKeys = ['userId', 'userPhone', 'userName', 'imageUrl',
+                        'status', 'orderId', 'notes', 'createdAt', 'updatedAt'];
+      return request.resource.data.keys().hasOnly(allowedKeys) &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    function isValidAdminPrescriptionUpdate() {
+      let allowedKeys = ['status', 'notes', 'updatedAt'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    function isValidNotificationData() {
+      let allowedKeys = ['userId', 'title', 'body', 'type', 'isRead', 'createdAt', 'orderId'];
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    function isSafeString(str, maxLen) {
+      return str is string && str.size() > 0 && str.size() <= maxLen;
+    }
+
+    function isValidCustomerOrderUpdate() {
+      let allowedKeys = ['notes', 'rating', 'updatedAt'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    function isValidAdminOrderUpdate() {
+      let allowedKeys = ['status', 'notes', 'updatedAt', 'assignedDeliveryId'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    function isValidDeliveryOrderUpdate() {
+      let allowedKeys = ['status', 'updatedAt'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys) &&
+        request.resource.data.status == 'delivered' &&
+        resource.data.status == 'outForDelivery';
+    }
+
+    match /users/{userId} {
+      allow create: if isSignedIn() && userId == request.auth.uid && isValidUserData();
+      allow read: if isSignedIn() && (userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (userId == request.auth.uid || isAdmin()) && isValidUserData();
+    }
+
+    match /orders/{orderId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        isValidOrderData();
+
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdminOrDelivery());
+
+      allow update: if isSignedIn() && 
+        ((resource.data.userId == request.auth.uid && isValidCustomerOrderUpdate()) ||
+        (isAdmin() && isValidAdminOrderUpdate()) ||
+        (isDelivery() && isValidDeliveryOrderUpdate()));
+    }
+
+    match /prescriptions/{prescriptionId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        isValidPrescriptionData();
+
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin() || isDelivery());
+
+      allow update: if isAdmin() && isValidAdminPrescriptionUpdate();
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        (request.resource.data.userId == request.auth.uid || isAdmin()) &&
+        isValidNotificationData();
+      allow update, delete: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /search_history/{documentId} {
+      allow read, create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    match /rate_limits/{limitId} {
+      allow read, write: if isSignedIn() && request.auth.uid == limitId;
+    }
+
+    function isValidMedicineData() {
+      let allowedKeys = ['id', 'name', 'genericName', 'manufacturer', 'category',
+                        'price', 'mrp', 'stock', 'unit', 'imageUrl',
+                        'requiresPrescription', 'description', 'isActive',
+                        'expiryDate', 'batchNumber', 'schedule', 'hsnCode'];
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    match /medicines/{medicineId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidMedicineData();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    function isValidLabOrderData() {
+      let allowedKeys = ['orderId', 'userId', 'userPhone', 'userName', 'homeCollectionAddress',
+                        'tests', 'totalAmount', 'status', 'paymentMethod', 'paymentStatus',
+                        'notes', 'createdAt', 'updatedAt', 'completedAt', 'statusHistory'];
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    function isValidLabOrderUpdate() {
+      let allowedKeys = ['status', 'notes', 'updatedAt', 'completedAt', 'statusHistory'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    function isValidLabTestData() {
+      let allowedKeys = ['name', 'category', 'price', 'tat_hours', 'sample_type', 'active', 'createdAt'];
+      return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    match /labOrders/{orderId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        isValidLabOrderData();
+
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow update: if isAdmin() && isValidLabOrderUpdate();
+
+      allow delete: if false;
+    }
+
+    match /lab_tests/{testId} {
+      allow read: if true;  // Allow public read access
+      allow create, update, delete: if isAdmin() && isValidLabTestData();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
