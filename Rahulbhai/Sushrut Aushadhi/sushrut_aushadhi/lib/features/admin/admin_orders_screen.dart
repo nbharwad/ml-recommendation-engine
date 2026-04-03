@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../services/remote_config_service.dart';
 import '../../core/utils/helpers.dart';
 import '../../core/widgets/empty_state_widget.dart';
 import '../../core/widgets/error_state_widget.dart';
@@ -539,7 +540,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                       status: order.status.name,
                       totalAmount: order.totalAmount,
                       itemNames: itemNames,
-                      storePhone: AppStrings.storePhone,
+                      storePhone: RemoteConfigService.storePhone,
                     );
                   } catch (_) {
                     if (!mounted) return;

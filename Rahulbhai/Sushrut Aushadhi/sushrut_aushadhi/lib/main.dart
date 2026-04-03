@@ -15,6 +15,7 @@ import 'core/widgets/connectivity_wrapper.dart';
 import 'firebase_options.dart';
 import 'services/connectivity_service.dart';
 import 'services/medicine_cache_service.dart';
+import 'services/remote_config_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -50,8 +51,8 @@ Future<void> main() async {
   );
 
   MedicineCacheService.loadCache();
-
   await ConnectivityService.initialize();
+  await RemoteConfigService.initialize();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -66,11 +67,35 @@ Future<void> main() async {
   });
 }
 
-class SushrutAushadhiApp extends ConsumerWidget {
+class SushrutAushadhiApp extends ConsumerStatefulWidget {
   const SushrutAushadhiApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SushrutAushadhiApp> createState() => _SushrutAushadhiAppState();
+}
+
+class _SushrutAushadhiAppState extends ConsumerState<SushrutAushadhiApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      RemoteConfigService.refresh();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
       title: AppStrings.appName,

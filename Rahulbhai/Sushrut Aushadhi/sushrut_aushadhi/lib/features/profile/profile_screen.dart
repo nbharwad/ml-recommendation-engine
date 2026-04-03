@@ -9,6 +9,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/responsive.dart';
+import '../../services/remote_config_service.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/menu_item_tile.dart';
 import '../../core/di/service_providers.dart';
@@ -241,7 +242,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       final message = Uri.encodeComponent(
                         'Hello Sushrut Aushadhi! I need help with my order.'
                       );
-                      final url = 'https://wa.me/${AppStrings.storePhone}?text=$message';
+                      final url = 'https://wa.me/${RemoteConfigService.storePhone}?text=$message';
                       await _launchUrl(url);
                     },
                   ),
@@ -564,7 +565,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Text('💊', style: TextStyle(fontSize: 48)),
             const SizedBox(height: 8),
             Text(
-              AppStrings.storeName,
+              RemoteConfigService.storeName,
               style: GoogleFonts.sora(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -572,7 +573,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
             Text(
-              AppStrings.storeTagline,
+              AppStrings.appTagline,
               style: GoogleFonts.sora(
                 fontSize: 12,
                 color: AppColors.textSecondary,
@@ -581,10 +582,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
-            _aboutRow('📍', 'Address', AppStrings.storeAddress),
-            _aboutRow('📞', 'Phone', AppStrings.storePhone),
-            _aboutRow('📋', 'Drug License', AppStrings.drugLicenseNo),
-            _aboutRow('🏛️', 'GST No.', AppStrings.gstNumber),
+            _aboutRow('📍', 'Address', RemoteConfigService.storeAddress),
+            _aboutRow('📞', 'Phone', RemoteConfigService.storePhone),
+            _aboutRow('📋', 'Drug License', RemoteConfigService.drugLicenseNo),
+            _aboutRow('🏛️', 'GST No.', RemoteConfigService.gstNumber),
             _aboutRow('📱', 'App Version', 'v${AppStrings.appVersion}'),
           ],
         ),

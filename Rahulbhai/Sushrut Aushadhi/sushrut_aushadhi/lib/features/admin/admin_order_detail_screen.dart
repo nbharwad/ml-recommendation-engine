@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../services/remote_config_service.dart';
 import '../../core/utils/helpers.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../models/order_model.dart';
@@ -115,7 +116,7 @@ class _AdminOrderDetailScreenState extends ConsumerState<AdminOrderDetailScreen>
             status: newStatus,
             totalAmount: order.totalAmount,
             itemNames: itemNames,
-            storePhone: AppStrings.storePhone,
+            storePhone: RemoteConfigService.storePhone,
           );
         } catch (e) {
           if (mounted) {

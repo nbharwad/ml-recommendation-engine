@@ -20,6 +20,7 @@ import '../../providers/medicines_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../services/local_data_service.dart';
 import '../../core/constants/app_strings.dart';
+import '../../services/remote_config_service.dart';
 
 const _primary = Color(0xFF0F6E56);
 const _primaryLight = Color(0xFFE1F5EE);
@@ -176,6 +177,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 _topBar(),
                 _trustBanner(),
+                if (!RemoteConfigService.isCurrentlyOpen) _storeClosedBanner(),
                 if (_isLoading)
                   _loading()
                 else ...[
@@ -196,7 +198,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _trustBanner() {
+Widget _trustBanner() {
     final badges = [
       _trustBadge('OK', 'Licensed'),
       _trustBadge('Rx', 'Pharmacist'),
@@ -206,20 +208,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Container(
       color: const Color(0xFFE1F5EE),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            for (var index = 0; index < badges.length; index++) ...[
-              badges[index],
-              if (index < badges.length - 1) _dividerV(),
-            ],
-          ],
-        ),
+      child: Row(
+        children: badges
+            .map((badge) => Expanded(child: badge))
+            .toList(),
       ),
     );
+  }
+
+  Widget _storeClosedBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      color: const Color(0xFFFFEBEE),
+      child: Row(
+        children: [
+          const Icon(Icons.access_time, color: Colors.red, size: 14),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Store is currently closed. Opens at ${RemoteConfigService.storeOpenTime}. You can still browse!',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.red[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+);
   }
 
   Widget _trustBadge(String emoji, String label) {
@@ -288,8 +305,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                'Drug License No: ${AppStrings.drugLicenseNo}\nGST: ${AppStrings.gstNumber}',
+Text(
+                'Drug License No: ${RemoteConfigService.drugLicenseNo}\nGST: ${RemoteConfigService.gstNumber}',
                 style: TextStyle(
                   fontSize: 10,
                   color: Colors.grey.shade600,

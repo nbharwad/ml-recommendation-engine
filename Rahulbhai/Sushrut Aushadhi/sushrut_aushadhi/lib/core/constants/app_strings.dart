@@ -1,20 +1,11 @@
 class AppStrings {
   static const appName = 'Sushrut Aushadhi';
   static const appNameHindi = 'Sushrut Aushadhi';
-
-  static const storePhone = '919429709499';
-  static const storeName = 'Sushrut Aushadhi';
-  static const storeTagline = 'Your trusted medicine partner';
-  static const storeWhatsApp = '919429709499';
-  static const storeEmail = 'contact@sushrutaushadhi.com';
-  static const storeAddress = 'Shop No. X, Your Area, Bengaluru - 560XXX';
-
-  static const drugLicenseNo = 'DL-KA-XXXXXXXX';
-  static const gstNumber = 'XXXXXXXXXXXX';
-  static const privacyPolicyUrl = 'https://sushrutaushadhi.com/privacy';
-  static const termsUrl = 'https://sushrutaushadhi.com/terms';
+  static const appTagline = 'Your trusted medicine partner';
 
   static const appVersion = '1.0.0';
+  static const privacyPolicyUrl = 'https://sushrutaushadhi.com/privacy';
+  static const termsUrl = 'https://sushrutaushadhi.com/terms';
   static const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.example.sushrut_aushadhi';
 
   static const login = 'Login';
@@ -27,6 +18,7 @@ class AppStrings {
 
   static const home = 'Home';
   static const search = 'Search medicines...';
+  static const searchHint = 'Search medicines, health products...';
   static const categories = 'Categories';
   static const all = 'All';
   static const painRelief = 'Pain Relief';
@@ -62,6 +54,7 @@ class AppStrings {
   static const myOrders = 'My Orders';
   static const logout = 'Logout';
   static const editAddress = 'Edit Address';
+  static const about = 'About';
 
   static const admin = 'Admin';
   static const adminOrders = 'Admin Orders';
@@ -82,4 +75,10 @@ class AppStrings {
   static const ourPrice = 'Our Price';
   static const save = 'Save';
   static const off = '% off';
+
+  static const noInternetMessage = 'No internet connection';
+  static const retryButtonText = 'Try Again';
+  static const uploadingText = 'Uploading...';
+  static const orderPlacedText = 'Order Placed!';
+  static const cashOnDelivery = 'Cash on Delivery';
 }

@@ -297,7 +297,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                     ),
                     SizedBox(height: 4),
                     Text(
-                      AppStrings.storeTagline,
+                      AppStrings.appTagline,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],

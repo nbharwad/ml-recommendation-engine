@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/local_data_service.dart';
 import '../../services/connectivity_service.dart';
+import '../../services/remote_config_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -60,6 +61,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (!mounted) return;
 
+    if (RemoteConfigService.maintenanceMode) {
+      _showMaintenanceScreen();
+      return;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       // Force-refresh JWT so custom claims (role) are loaded before the router
@@ -79,6 +85,53 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (!mounted) return;
     context.go(user != null ? '/home' : '/login');
+  }
+
+  void _showMaintenanceScreen() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🔧', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 16),
+              const Text(
+                'Under Maintenance',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                RemoteConfigService.maintenanceMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (RemoteConfigService.storePhone.isNotEmpty)
+                Text(
+                  'Call us: ${RemoteConfigService.storePhone}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF0F6E56),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
