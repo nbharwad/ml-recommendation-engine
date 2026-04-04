@@ -7,7 +7,7 @@ service cloud.firestore {
     }
 
     function hasRole(role) {
-      return isSignedIn() && request.auth.token.role == role;
+      return isSignedIn() && get(/databases/{database}/documents/users/$(request.auth.uid)).data.role == role;
     }
 
     function isAdmin() {
@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     function isAdminOrDelivery() {
-      return isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.role == 'delivery');
+      return isSignedIn() && (get(/databases/{database}/documents/users/$(request.auth.uid)).data.role == 'admin' || get(/databases/{database}/documents/users/$(request.auth.uid)).data.role == 'delivery');
     }
 
     function isOwner(userId) {
@@ -70,7 +70,7 @@ service cloud.firestore {
     }
 
     function isValidAdminOrderUpdate() {
-      let allowedKeys = ['status', 'notes', 'updatedAt', 'updatedBy', 'assignedDeliveryId'];
+      let allowedKeys = ['status', 'notes', 'updatedAt', 'updatedBy', 'assignedDeliveryId', 'deliveredAt', 'statusHistory'];
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
     }
 
