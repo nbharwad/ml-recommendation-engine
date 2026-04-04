@@ -11,6 +11,7 @@ import '../../core/widgets/login_prompt_widget.dart';
 import '../../core/di/service_providers.dart';
 import '../../models/order_model.dart';
 import '../../models/delivery_address.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/connectivity_service.dart';
@@ -801,8 +802,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return;
     }
 
-    final userAsync = ref.read(currentUserProvider);
-    final currentUser = userAsync.valueOrNull;
+    // Await the latest settled value from the stream — ensures we never validate
+    // against a stale snapshot (e.g. after returning from the profile screen).
+    final UserModel? currentUser = await ref
+        .read(currentUserProvider.future)
+        .catchError((_) => null);
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -811,6 +815,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         ),
       );
       context.push('/login');
+      return;
+    }
+
+    // If returning from profile after saving address, auto-proceed without
+    // re-prompting — data is now fresh so _createOrder will use valid address.
+    if (widget.fromProfile && !_hasAutoProcessed) {
+      _hasAutoProcessed = true;
+      await _createOrder();
       return;
     }
 
@@ -848,12 +860,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       if (shouldFillAddress == true && mounted) {
         context.go('/profile?redirectTo=cart');
       }
-      return;
-    }
-
-    if (widget.fromProfile && !_hasAutoProcessed) {
-      _hasAutoProcessed = true;
-      await _createOrder();
       return;
     }
 

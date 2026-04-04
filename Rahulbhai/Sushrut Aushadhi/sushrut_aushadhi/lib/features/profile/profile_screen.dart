@@ -879,8 +879,9 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
     _addressController = TextEditingController();
     _pincodeController = TextEditingController();
 
-    ref.read(currentUserProvider).whenData((user) {
-      if (user != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(currentUserProvider).valueOrNull;
+      if (user != null && mounted) {
         _phoneController.text = user.phone;
         _addressController.text = user.address;
         _pincodeController.text = user.pincode;
