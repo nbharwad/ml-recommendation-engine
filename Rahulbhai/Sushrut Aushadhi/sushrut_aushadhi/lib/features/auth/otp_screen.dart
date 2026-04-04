@@ -231,18 +231,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: context.adaptiveSpace(32)),
-                    LayoutBuilder(
-                      builder: (context, otpConstraints) {
-                        const spacing = 8.0;
-                        final fieldWidth = ((otpConstraints.maxWidth - (spacing * 5)) / 6)
-                            .clamp(40.0, 52.0);
-                        return Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: spacing,
-                          runSpacing: spacing,
-                          children: List.generate(6, (index) {
-                            return SizedBox(
-                              width: fieldWidth,
+                    SizedBox(
+                      height: 56,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(6, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: SizedBox(
+                              width: 48,
+                              height: 56,
                               child: TextField(
                                 controller: _controllers[index],
                                 focusNode: _focusNodes[index],
@@ -250,12 +248,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                                 textAlign: TextAlign.center,
                                 maxLength: 1,
                                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                style: TextStyle(
-                                  fontSize: context.isCompactWidth ? 20 : 24,
+                                style: const TextStyle(
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 decoration: InputDecoration(
                                   counterText: '',
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -269,10 +268,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                                 ),
                                 onChanged: (value) => _onOtpChanged(index, value),
                               ),
-                            );
-                          }),
-                        );
-                      },
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                     if (_errorMessage != null) ...[
                       SizedBox(height: context.adaptiveSpace(16)),
