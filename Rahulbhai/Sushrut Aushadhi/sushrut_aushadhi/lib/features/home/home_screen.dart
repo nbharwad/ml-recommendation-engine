@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/utils/helpers.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/empty_state_widget.dart';
@@ -22,13 +23,6 @@ import '../../providers/notification_provider.dart';
 import '../../services/local_data_service.dart';
 import '../../core/constants/app_strings.dart';
 import '../../services/remote_config_service.dart';
-
-const _primary = Color(0xFF0F6E56);
-const _primaryLight = Color(0xFFE1F5EE);
-const _background = Color(0xFFF7F9F7);
-const _textPrimary = Color(0xFF1A1A1A);
-const _textSecondary = Color(0xFF666666);
-const _discountRed = Color(0xFFE53935);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -112,7 +106,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(cartProvider.notifier).addItem(medicine);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: _primary,
+        backgroundColor: AppColors.primary,
         content: Text('${medicine.name} added to cart', style: GoogleFonts.sora()),
       ),
     );
@@ -140,7 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'vitamins':
         return const Color(0xFF42C7B2);
       default:
-        return _primary;
+        return AppColors.primary;
     }
   }
 
@@ -169,11 +163,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Responsive: base nav height (64) + bottom padding + extra for taller screens
     final navHeight = 64 + bottomInset + (screenHeight > 800 ? 8 : 4);
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: _primary,
+          color: AppColors.primary,
           backgroundColor: Colors.white,
           strokeWidth: 2.5,
           onRefresh: _onRefresh,
@@ -332,7 +326,7 @@ Text(
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Center(
-              child: Icon(Icons.local_hospital_rounded, color: _primary, size: 22),
+              child: Icon(Icons.local_hospital_rounded, color: AppColors.primary, size: 22),
             ),
           );
 
@@ -375,7 +369,7 @@ Text(
         children: [
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, color: _primary, size: 20),
+              const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Consumer(
@@ -390,12 +384,12 @@ Text(
                         Text('Deliver to',
                             style: GoogleFonts.sora(
                                 fontSize: 11,
-                                color: _textSecondary,
+                                color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w500)),
-                        Text(city.isNotEmpty ? city : 'Anand, Gujarat',
+                        Text(city.isNotEmpty ? city : 'Select delivery location',
                             style: GoogleFonts.sora(
                                 fontSize: 15,
-                                color: _textPrimary,
+                                color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
                         Text(displayAddress.isNotEmpty 
@@ -498,7 +492,7 @@ Text(
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                        color: _primary,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.mic_none_rounded,
                         color: Colors.white, size: 20),
@@ -560,7 +554,7 @@ Text(
               width: _currentBanner == i ? 18 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: _currentBanner == i ? _primary : const Color(0xFFD8DDD8),
+                color: _currentBanner == i ? AppColors.primary : const Color(0xFFD8DDD8),
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
@@ -597,7 +591,7 @@ Text(
                     child: Icon(
                       Icons.description_outlined,
                       size: 28,
-                      color: _primary,
+                      color: AppColors.primary,
                     ),
                   ),
                 );
@@ -611,7 +605,7 @@ Text(
                         style: GoogleFonts.sora(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: _textPrimary,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -620,14 +614,14 @@ Text(
                         style: GoogleFonts.sora(
                           fontSize: 12,
                           height: 1.35,
-                          color: _textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
-                          color: _primary,
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -708,7 +702,7 @@ Text(
                         style: GoogleFonts.sora(
                             fontSize: 11,
                             height: 1.2,
-                            color: selected ? _textPrimary : _textSecondary,
+                            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
                             fontWeight:
                                 selected ? FontWeight.w700 : FontWeight.w500),
                       )
@@ -890,7 +884,7 @@ Text(
                         child: TextButton(
                           onPressed: () => context.push('/search'),
                           style: TextButton.styleFrom(
-                            foregroundColor: _primary,
+                            foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: Text(
@@ -1241,7 +1235,7 @@ Text(
                   title,
                   style: GoogleFonts.sora(
                     fontSize: 21,
-                    color: _textPrimary,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1253,7 +1247,7 @@ Text(
                       action,
                       style: GoogleFonts.sora(
                         fontSize: 13,
-                        color: _primary,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1269,7 +1263,7 @@ Text(
                   title,
                   style: GoogleFonts.sora(
                     fontSize: 21,
-                    color: _textPrimary,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1281,7 +1275,7 @@ Text(
                     action,
                     style: GoogleFonts.sora(
                       fontSize: 13,
-                      color: _primary,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1346,7 +1340,7 @@ class _MedicineCard extends StatelessWidget {
                         child: Text(
                           'Rx',
                           style: GoogleFonts.sora(
-                            color: _discountRed,
+                            color: AppColors.discountRed,
                             fontSize: isCompact ? 8 : 9,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1376,14 +1370,14 @@ class _MedicineCard extends StatelessWidget {
                     width: imageSize,
                     height: imageSize,
                     decoration: BoxDecoration(
-                      color: _primaryLight,
+                      color: AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Center(
                       child: Icon(
                         _medicineIcon(medicine['category']?.toString() ?? ''),
                         size: isCompact ? 30 : 36,
-                        color: _primary,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -1403,7 +1397,7 @@ class _MedicineCard extends StatelessWidget {
                           style: GoogleFonts.sora(
                             fontSize: isCompact ? 12 : 13,
                             height: 1.3,
-                            color: _textPrimary,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1417,7 +1411,7 @@ class _MedicineCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.sora(
                             fontSize: isCompact ? 10 : 11,
-                            color: _textSecondary,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -1431,7 +1425,7 @@ class _MedicineCard extends StatelessWidget {
                             child: Text(
                               '\u20B9${price.toStringAsFixed(0)}',
                               style: GoogleFonts.sora(
-                                color: _primary,
+                                color: AppColors.primary,
                                 fontSize: isCompact ? 13 : 14,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1442,7 +1436,7 @@ class _MedicineCard extends StatelessWidget {
                             child: Text(
                               '\u20B9${mrp.toStringAsFixed(0)}',
                               style: GoogleFonts.sora(
-                                color: _textSecondary,
+                                color: AppColors.textSecondary,
                                 fontSize: isCompact ? 9 : 10,
                                 decoration: TextDecoration.lineThrough,
                               ),
@@ -1454,7 +1448,7 @@ class _MedicineCard extends StatelessWidget {
                               child: Text(
                                 '$discount% off',
                                 style: GoogleFonts.sora(
-                                  color: _discountRed,
+                                  color: AppColors.discountRed,
                                   fontSize: isCompact ? 9 : 10,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1471,7 +1465,7 @@ class _MedicineCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onAdd,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 10),
@@ -1621,7 +1615,7 @@ class _ResponsiveBannerCard extends StatelessWidget {
                       child: Text(
                         "${banner['btnText'] ?? 'Order Now'} ->",
                         style: GoogleFonts.sora(
-                          color: _primary,
+                          color: AppColors.primary,
                           fontSize: compact ? 11 : 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1648,7 +1642,7 @@ class _MedicineSearchDelegate extends SearchDelegate<void> {
   ThemeData appBarTheme(BuildContext context) {
     final theme = Theme.of(context);
     return theme.copyWith(
-      scaffoldBackgroundColor: _background,
+      scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
@@ -1659,18 +1653,18 @@ class _MedicineSearchDelegate extends SearchDelegate<void> {
 
   @override
   TextStyle? get searchFieldStyle =>
-      GoogleFonts.sora(fontSize: 14, color: _textPrimary);
+      GoogleFonts.sora(fontSize: 14, color: AppColors.textPrimary);
 
   @override
   Widget? buildLeading(BuildContext context) => IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: _textPrimary),
+        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
         onPressed: () => close(context, null),
       );
 
   @override
   List<Widget>? buildActions(BuildContext context) => [
         IconButton(
-            icon: const Icon(Icons.close_rounded, color: _textPrimary),
+            icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
             onPressed: () => query = '')
       ];
 
@@ -1682,7 +1676,7 @@ class _MedicineSearchDelegate extends SearchDelegate<void> {
           ref.read(cartProvider.notifier).addItem(medicine);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                backgroundColor: _primary,
+                backgroundColor: AppColors.primary,
                 content: Text('${medicine.name} added to cart',
                     style: GoogleFonts.sora())),
           );
@@ -1709,17 +1703,17 @@ class _SearchBody extends ConsumerWidget {
     if (query.trim().isEmpty) {
       return Center(
           child: Text('Search for medicines',
-              style: GoogleFonts.sora(fontSize: 14, color: _textSecondary)));
+              style: GoogleFonts.sora(fontSize: 14, color: AppColors.textSecondary)));
     }
     final resultsAsync = widgetRef.watch(searchResultsProvider(trimmedQuery));
     return resultsAsync.when(
       loading: () => const Center(
-        child: CircularProgressIndicator(color: _primary),
+        child: CircularProgressIndicator(color: AppColors.primary),
       ),
       error: (error, stackTrace) => Center(
         child: Text(
           'Could not search medicines. Check connection.',
-          style: GoogleFonts.sora(fontSize: 14, color: _textSecondary),
+          style: GoogleFonts.sora(fontSize: 14, color: AppColors.textSecondary),
         ),
       ),
       data: (items) {
@@ -1759,7 +1753,7 @@ class _SearchBody extends ConsumerWidget {
                         child: Icon(
                           _searchResultIcon(medicine.category),
                           size: 32,
-                          color: _primary,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -1774,7 +1768,7 @@ class _SearchBody extends ConsumerWidget {
                                   child: Text(medicine.name,
                                       style: GoogleFonts.sora(
                                           fontSize: 14,
-                                          color: _textPrimary,
+                                          color: AppColors.textPrimary,
                                           fontWeight: FontWeight.w700))),
                               if (medicine.requiresPrescription)
                                 Container(
@@ -1786,7 +1780,7 @@ class _SearchBody extends ConsumerWidget {
                                   child: Text('Rx',
                                       style: GoogleFonts.sora(
                                           fontSize: 10,
-                                          color: _discountRed,
+                                          color: AppColors.discountRed,
                                           fontWeight: FontWeight.w800)),
                                 ),
                             ],
@@ -1794,7 +1788,7 @@ class _SearchBody extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(medicine.manufacturer,
                               style: GoogleFonts.sora(
-                                  fontSize: 11, color: _textSecondary)),
+                                  fontSize: 11, color: AppColors.textSecondary)),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
@@ -1802,18 +1796,18 @@ class _SearchBody extends ConsumerWidget {
                               Text('\u20B9${medicine.price.toStringAsFixed(0)}',
                                   style: GoogleFonts.sora(
                                       fontSize: 14,
-                                      color: _primary,
+                                      color: AppColors.primary,
                                       fontWeight: FontWeight.w800)),
                               Text('\u20B9${medicine.mrp.toStringAsFixed(0)}',
                                   style: GoogleFonts.sora(
                                       fontSize: 11,
-                                      color: _textSecondary,
+                                      color: AppColors.textSecondary,
                                       decoration: TextDecoration.lineThrough)),
                               if (discount > 0)
                                 Text('$discount% off',
                                     style: GoogleFonts.sora(
                                         fontSize: 11,
-                                        color: _discountRed,
+                                        color: AppColors.discountRed,
                                         fontWeight: FontWeight.w700)),
                             ],
                           ),
@@ -1823,7 +1817,7 @@ class _SearchBody extends ConsumerWidget {
                     ElevatedButton(
                       onPressed: () => onAdd(medicine),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
@@ -1872,7 +1866,7 @@ class _HomeBottomNav extends StatelessWidget {
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.white,
-      selectedItemColor: _primary,
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: const Color(0xFF9BA29D),
       selectedLabelStyle:
           GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700),
@@ -1899,7 +1893,7 @@ class _HomeBottomNav extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              Icon(icon, color: active ? _primary : const Color(0xFF9BA29D)),
+              Icon(icon, color: active ? AppColors.primary : const Color(0xFF9BA29D)),
               if (badge > 0)
                 Positioned(
                   top: -6,
@@ -1908,7 +1902,7 @@ class _HomeBottomNav extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                     decoration: BoxDecoration(
-                        color: _discountRed,
+                        color: AppColors.discountRed,
                         borderRadius: BorderRadius.circular(999)),
                     child: Text('$badge',
                         style: GoogleFonts.sora(
@@ -1924,7 +1918,7 @@ class _HomeBottomNav extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-                color: active ? _primary : Colors.transparent,
+                color: active ? AppColors.primary : Colors.transparent,
                 shape: BoxShape.circle),
           )
         ],

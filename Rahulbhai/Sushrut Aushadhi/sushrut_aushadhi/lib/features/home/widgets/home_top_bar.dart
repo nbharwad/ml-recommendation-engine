@@ -48,7 +48,7 @@ class HomeTopBar extends ConsumerWidget {
                                     color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w700));
                           },
-                          loading: () => Text('Anand, Gujarat',
+                          loading: () => Text('Loading...',
                               style: GoogleFonts.sora(
                                   fontSize: 15,
                                   color: AppColors.textPrimary,

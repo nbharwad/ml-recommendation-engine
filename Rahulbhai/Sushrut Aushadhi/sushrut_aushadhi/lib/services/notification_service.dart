@@ -1,19 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
 
 import '../models/order_model.dart';
 
 class NotificationService {
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _db;
+  void Function(String orderId)? _onOrderNotificationTap;
 
   NotificationService({
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
   })  : _messaging = messaging ?? FirebaseMessaging.instance,
         _db = firestore ?? FirebaseFirestore.instance;
+
+  void setOrderNotificationTapCallback(void Function(String orderId) callback) {
+    _onOrderNotificationTap = callback;
+  }
 
   Future<void> initialize() async {
     final permission = await _messaging.requestPermission();
@@ -76,5 +80,23 @@ class NotificationService {
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final orderId = message.data['orderId'] as String?;
+    if (orderId != null && orderId.isNotEmpty) {
+      _onOrderNotificationTap?.call(orderId);
+    }
+  }
+
+  Future<void> setupMessageHandlers() async {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleNotificationTap(message);
+    });
+
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
+    }
   }
 }

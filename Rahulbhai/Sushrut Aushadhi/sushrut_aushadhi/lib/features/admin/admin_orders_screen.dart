@@ -41,7 +41,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   }
 
   Future<void> _onRefresh() async {
-    ref.invalidate(allOrdersProvider);
+    ref.read(paginatedOrdersProvider.notifier).refresh();
     await Future<void>.delayed(const Duration(milliseconds: 400));
   }
 
@@ -49,11 +49,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   Widget build(BuildContext context) {
     final isAdminAsync = ref.watch(isAdminFromClaimsProvider);
     final isAdmin = isAdminAsync.valueOrNull ?? false;
-    final ordersAsync = ref.watch(allOrdersProvider);
-    final stats = ordersAsync.maybeWhen(
-      data: _AdminOrderStats.fromOrders,
-      orElse: _AdminOrderStats.empty,
-    );
+    final paginatedState = ref.watch(paginatedOrdersProvider);
+    final stats = _AdminOrderStats.fromOrders(paginatedState.orders);
 
     if (!isAdmin) {
       return Scaffold(
@@ -120,10 +117,10 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildOrderList(ordersAsync, 'pending'),
-                  _buildOrderList(ordersAsync, 'confirmed'),
-                  _buildOrderList(ordersAsync, 'delivered'),
-                  _buildOrderList(ordersAsync, 'all'),
+                  _buildOrderList(paginatedState, 'pending'),
+                  _buildOrderList(paginatedState, 'confirmed'),
+                  _buildOrderList(paginatedState, 'delivered'),
+                  _buildOrderList(paginatedState, 'all'),
                 ],
               ),
             ),
@@ -322,37 +319,57 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
     );
   }
 
-  Widget _buildOrderList(AsyncValue<List<OrderModel>> ordersAsync, String status) {
-    return ordersAsync.when(
-      data: (orders) {
-        final filteredOrders = status == 'all'
-            ? orders
-            : orders.where((order) => order.status.name == status).toList();
+  Widget _buildOrderList(PaginatedOrdersState paginatedState, String status) {
+    if (paginatedState.orders.isEmpty && paginatedState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        if (filteredOrders.isEmpty) {
-          return _buildEmptyState(status);
-        }
-
-        return RefreshIndicator(
-          color: Colors.white,
-          backgroundColor: const Color(0xFF0F6E56),
-          onRefresh: _onRefresh,
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: filteredOrders.length,
-            itemBuilder: (context, index) => _buildOrderCard(filteredOrders[index]),
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
+    if (paginatedState.orders.isEmpty && paginatedState.error != null) {
+      return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: ErrorStateWidget(
-            message: 'Could not load orders.\n$error',
+            message: 'Could not load orders.\n${paginatedState.error}',
             onRetry: _onRefresh,
           ),
+        ),
+      );
+    }
+
+    final filteredOrders = status == 'all'
+        ? paginatedState.orders
+        : paginatedState.orders.where((order) => order.status.name == status).toList();
+
+    if (filteredOrders.isEmpty) {
+      return _buildEmptyState(status);
+    }
+
+    return RefreshIndicator(
+      color: Colors.white,
+      backgroundColor: const Color(0xFF0F6E56),
+      onRefresh: _onRefresh,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200 &&
+              !paginatedState.isLoading &&
+              paginatedState.hasMore) {
+            ref.read(paginatedOrdersProvider.notifier).loadMoreOrders();
+          }
+          return false;
+        },
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          itemCount: filteredOrders.length + (paginatedState.hasMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index >= filteredOrders.length) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return _buildOrderCard(filteredOrders[index]);
+          },
         ),
       ),
     );
