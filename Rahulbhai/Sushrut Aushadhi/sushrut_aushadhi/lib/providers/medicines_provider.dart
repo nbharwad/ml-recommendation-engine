@@ -13,7 +13,8 @@ final medicinesProvider = StreamProvider.family<List<MedicineModel>, String>(
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-final searchResultsProvider = FutureProvider.family<List<MedicineModel>, String>(
+final searchResultsProvider =
+    FutureProvider.family<List<MedicineModel>, String>(
   (ref, query) async {
     if (query.isEmpty) return [];
     final firestoreService = ref.read(firestoreServiceProvider);
@@ -21,7 +22,13 @@ final searchResultsProvider = FutureProvider.family<List<MedicineModel>, String>
   },
 );
 
-final medicineByIdProvider = FutureProvider.family<MedicineModel?, String>((ref, medicineId) async {
+final medicineByIdProvider =
+    FutureProvider.family<MedicineModel?, String>((ref, medicineId) async {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return await firestoreService.getMedicineById(medicineId);
+});
+
+final allMedicinesProvider = StreamProvider<List<MedicineModel>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getMedicinesStream(category: 'all');
 });
