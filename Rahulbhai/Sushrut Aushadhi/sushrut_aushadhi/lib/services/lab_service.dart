@@ -75,8 +75,11 @@ class LabService {
     if (order.totalAmount <= 0 || order.totalAmount > 50000) {
       throw Exception('Invalid total amount: must be between 1 and 50000');
     }
-    if (order.userId.isEmpty || order.userPhone.isEmpty || order.userName.isEmpty) {
+    if (order.userId.isEmpty || order.userName.isEmpty) {
       throw Exception('Missing required user information');
+    }
+    if (order.userPhone.isEmpty) {
+      throw Exception('Missing mobile number: please add your phone number to your profile');
     }
 
     try {

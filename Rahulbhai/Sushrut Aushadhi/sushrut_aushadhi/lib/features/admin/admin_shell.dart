@@ -188,7 +188,13 @@ class _LabDashboard extends ConsumerWidget {
               height: 100,
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (e, _) => Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Text(
+                'Could not load lab stats: $e',
+                style: GoogleFonts.sora(color: AppColors.error, fontSize: 12),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
 

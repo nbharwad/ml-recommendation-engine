@@ -32,6 +32,16 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(allowedKeys);
     }
 
+    // For updates: only validate the changed keys (diff), not the full document.
+    // This prevents rejection when existing Firestore documents contain legacy fields
+    // (e.g. isAdmin) that are not in the current allowedKeys list.
+    // Note: 'role' and 'createdAt' are intentionally excluded to prevent self-escalation.
+    function isValidUserUpdate() {
+      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress',
+                         'fcmToken', 'fcmTokens', 'updatedAt', 'lastLoginAt', 'isActive'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
     function isValidOrderData() {
       let allowedKeys = ['orderId', 'userId', 'userPhone', 'userName', 'deliveryAddress',
                         'items', 'prescriptionUrl', 'totalAmount', 'status', 'paymentMethod',
@@ -93,7 +103,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if isSignedIn() && userId == request.auth.uid && isValidUserData();
       allow read: if isSignedIn() && (userId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (userId == request.auth.uid || isAdmin()) && isValidUserData();
+      allow update: if isSignedIn() && (userId == request.auth.uid || isAdmin()) && isValidUserUpdate();
     }
 
     match /orders/{orderId} {

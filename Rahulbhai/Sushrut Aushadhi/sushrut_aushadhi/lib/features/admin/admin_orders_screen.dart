@@ -313,12 +313,17 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
     }
 
     if (pageState.error != null && pageState.orders.isEmpty) {
+      final errStr = pageState.error.toString();
+      final isPermission = errStr.contains('permission-denied') ||
+          errStr.contains('PERMISSION_DENIED');
       return SliverFillRemaining(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: ErrorStateWidget(
-              message: 'Could not load orders.\n${pageState.error}',
+              message: isPermission
+                  ? 'Permission denied. Ensure your account has admin access and try refreshing.'
+                  : 'Could not load orders.\n$errStr',
               onRetry: _onRefresh,
             ),
           ),

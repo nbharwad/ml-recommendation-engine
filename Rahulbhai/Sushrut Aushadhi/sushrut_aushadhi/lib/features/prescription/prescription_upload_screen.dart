@@ -397,7 +397,9 @@ class _PrescriptionUploadScreenState
                   onPressed: () {
                     Navigator.pop(context);
                     context.push(
-                        '/my-prescriptions');
+                        widget.prescriptionType == PrescriptionType.lab
+                            ? '/my-prescriptions?type=lab'
+                            : '/my-prescriptions');
                   },
                   style: ElevatedButton
                       .styleFrom(
