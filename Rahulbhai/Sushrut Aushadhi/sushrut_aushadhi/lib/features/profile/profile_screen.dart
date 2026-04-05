@@ -8,9 +8,9 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
-import '../../core/utils/responsive.dart';
+import '../../core/widgets/profile_header_widget.dart';
+import '../../core/widgets/profile_menu_section.dart';
 import '../../services/remote_config_service.dart';
-import '../../core/widgets/menu_item_tile.dart';
 import '../../core/di/service_providers.dart';
 import '../../models/lab_order_model.dart';
 import '../../models/order_model.dart';
@@ -40,7 +40,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Logout', style: GoogleFonts.sora(fontWeight: FontWeight.bold)),
+        title: Text('Logout',
+            style: GoogleFonts.sora(fontWeight: FontWeight.bold)),
         content: Text(
           'Are you sure you want to logout?',
           style: GoogleFonts.sora(),
@@ -48,11 +49,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: GoogleFonts.sora(color: AppColors.textSecondary)),
+            child: Text('Cancel',
+                style: GoogleFonts.sora(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Logout', style: GoogleFonts.sora(color: AppColors.error)),
+            child:
+                Text('Logout', style: GoogleFonts.sora(color: AppColors.error)),
           ),
         ],
       ),
@@ -102,56 +105,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildGuestView(int cartItemCount) {
-    return Column(
-      children: [
-        _buildHeroHeader(null),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 24),
+    return CustomScrollView(
+      slivers: [
+        ProfileHeaderGuest(
+          onLoginTap: () => context.go('/login'),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const SizedBox(height: 16),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                Text(
+                  'Login to view your orders and manage your profile',
+                  style: GoogleFonts.sora(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Login to view your orders and profile',
-                        style: GoogleFonts.sora(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => context.go('/login'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Login / Sign Up',
-                            style: GoogleFonts.sora(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -164,211 +134,219 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildUserView(UserModel user, int cartItemCount) {
     final isAdmin = ref.watch(isAdminProvider);
     final allOrders = ref.watch(ordersProvider).valueOrNull ?? [];
-    final activeCount = allOrders.where((o) =>
-      o.status == OrderStatus.pending ||
-      o.status == OrderStatus.confirmed ||
-      o.status == OrderStatus.preparing ||
-      o.status == OrderStatus.outForDelivery
-    ).length;
     final totalOrders = allOrders.length;
+    final activeOrders = allOrders
+        .where((o) =>
+            o.status == OrderStatus.pending ||
+            o.status == OrderStatus.confirmed ||
+            o.status == OrderStatus.preparing ||
+            o.status == OrderStatus.outForDelivery)
+        .length;
     final allLabOrders = ref.watch(userLabOrdersProvider).valueOrNull ?? [];
-    final activeLabCount = allLabOrders.where((o) =>
-      o.status == LabOrderStatus.pending ||
-      o.status == LabOrderStatus.sampleCollected ||
-      o.status == LabOrderStatus.processing
-    ).length;
-    
-    return Column(
-      children: [
-        _buildHeroHeader(user, totalOrders: totalOrders),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 24),
+    final activeLabOrders = allLabOrders
+        .where((o) =>
+            o.status == LabOrderStatus.pending ||
+            o.status == LabOrderStatus.sampleCollected ||
+            o.status == LabOrderStatus.processing)
+        .length;
+
+    return CustomScrollView(
+      slivers: [
+        ProfileHeaderWidget(
+          user: user,
+          totalOrders: totalOrders,
+          activeOrders: activeOrders,
+          activeLabOrders: activeLabOrders,
+          onEditTap: _showEditProfileSheet,
+          onOrdersTap: () => context.go('/orders'),
+          onLabTestsTap: () => context.push('/lab/orders'),
+        ),
+        if (isAdmin) ...[
+          ProfileMenuSection(
+            title: 'ADMIN',
+            icon: Icons.admin_panel_settings_rounded,
+            iconColor: AppColors.primary,
+            children: [
+              ProfileMenuTile(
+                icon: Icons.receipt_long_rounded,
+                iconColor: AppColors.primary,
+                iconBgColor: const Color(0xFFE1F5EE),
+                title: 'Admin Orders',
+                subtitle: 'Manage customer orders',
+                onTap: () => context.push('/admin'),
+              ),
+              ProfileMenuTile(
+                icon: Icons.medication_rounded,
+                iconColor: const Color(0xFF8E24AA),
+                iconBgColor: const Color(0xFFF3E5F5),
+                title: 'Prescriptions',
+                subtitle: 'Review prescriptions',
+                onTap: () => context.push('/admin/prescriptions'),
+                isLast: true,
+              ),
+            ],
+          ),
+        ],
+        ProfileMenuSection(
+          title: 'ACCOUNT',
+          icon: Icons.person_rounded,
+          iconColor: AppColors.primary,
+          children: [
+            ProfileMenuTile(
+              icon: Icons.receipt_long_rounded,
+              iconColor: AppColors.primary,
+              iconBgColor: const Color(0xFFE1F5EE),
+              title: 'My Orders',
+              subtitle: 'Track & manage your orders',
+              trailing: activeOrders > 0
+                  ? ProfileMenuBadge(text: '$activeOrders active')
+                  : null,
+              onTap: () => context.go('/orders'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.biotech_rounded,
+              iconColor: AppColors.labPrimary,
+              iconBgColor: AppColors.labPrimaryLight,
+              title: 'My Lab Tests',
+              subtitle: 'View & track lab bookings',
+              trailing: activeLabOrders > 0
+                  ? ProfileMenuBadge(
+                      text: '$activeLabOrders active',
+                      color: AppColors.labPrimary,
+                    )
+                  : null,
+              onTap: () => context.push('/lab/orders'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.location_on_outlined,
+              iconColor: const Color(0xFF1E88E5),
+              iconBgColor: const Color(0xFFE3F2FD),
+              title: 'Saved Addresses',
+              subtitle: 'Home, Work & more',
+              onTap: _showAddressSheet,
+            ),
+            ProfileMenuTile(
+              icon: Icons.description_outlined,
+              iconColor: const Color(0xFF8E24AA),
+              iconBgColor: const Color(0xFFF3E5F5),
+              title: 'My Prescriptions',
+              subtitle: 'Medicine prescriptions',
+              onTap: () => context.push('/my-prescriptions'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.assignment_outlined,
+              iconColor: AppColors.labPrimary,
+              iconBgColor: AppColors.labPrimaryLight,
+              title: 'Lab Prescriptions',
+              subtitle: 'Uploaded lab prescriptions',
+              onTap: () => context.push('/my-prescriptions?type=lab'),
+              isLast: true,
+            ),
+          ],
+        ),
+        ProfileMenuSection(
+          title: 'SUPPORT',
+          icon: Icons.headset_mic_rounded,
+          iconColor: const Color(0xFFFB8C00),
+          children: [
+            ProfileMenuTile(
+              icon: Icons.chat_bubble_outline,
+              iconColor: const Color(0xFFFB8C00),
+              iconBgColor: const Color(0xFFFFF3E0),
+              title: 'Chat with Us',
+              subtitle: 'WhatsApp support',
+              onTap: () async {
+                final message = Uri.encodeComponent(
+                    'Hello Sushrut Aushadhi! I need help with my order.');
+                final url =
+                    'https://wa.me/${RemoteConfigService.storePhone}?text=$message';
+                await _launchUrl(url);
+              },
+            ),
+            ProfileMenuTile(
+              icon: Icons.call_outlined,
+              iconColor: const Color(0xFF1E88E5),
+              iconBgColor: const Color(0xFFE3F2FD),
+              title: 'Call Store',
+              subtitle: '+91 80 XXXX XXXX',
+              onTap: () => _launchUrl('tel:+918000000000'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.star_outline,
+              iconColor: const Color(0xFFFFB300),
+              iconBgColor: const Color(0xFFFFF8E1),
+              title: 'Rate the App',
+              subtitle: 'Share your feedback',
+              onTap: () => _launchUrl('https://play.google.com/store/apps'),
+              isLast: true,
+            ),
+          ],
+        ),
+        ProfileMenuSection(
+          title: 'LEGAL',
+          icon: Icons.gavel_rounded,
+          iconColor: AppColors.textSecondary,
+          children: [
+            ProfileMenuTile(
+              icon: Icons.info_outline_rounded,
+              iconColor: AppColors.primary,
+              iconBgColor: const Color(0xFFE1F5EE),
+              title: 'About Sushrut Aushadhi',
+              subtitle: 'Our story, license & contact',
+              onTap: () => _showAboutDialog(context),
+            ),
+            ProfileMenuTile(
+              icon: Icons.lock_outline,
+              iconColor: AppColors.primary,
+              iconBgColor: const Color(0xFFE1F5EE),
+              title: 'Privacy Policy',
+              onTap: () => _launchUrl('https://sushrutaushadhi.com/privacy'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.description_outlined,
+              iconColor: AppColors.primary,
+              iconBgColor: const Color(0xFFE1F5EE),
+              title: 'Terms of Service',
+              onTap: () => _launchUrl('https://sushrutaushadhi.com/terms'),
+              isLast: true,
+            ),
+          ],
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isAdmin) ...[
-                  const SizedBox(height: 8),
-                  _buildSectionTitle('ADMIN'),
-                  _buildMenuSection([
-                    MenuItemTile(
-                      icon: const Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 18),
-                      iconBg: const Color(0xFFE1F5EE),
-                      title: 'Admin Orders',
-                      subtitle: 'Manage customer orders',
-                      onTap: () => context.push('/admin'),
-                    ),
-                    MenuItemTile(
-                      icon: const Icon(Icons.medication, color: Color(0xFF8E24AA), size: 18),
-                      iconBg: const Color(0xFFF3E5F5),
-                      title: 'Prescriptions',
-                      subtitle: 'Review prescriptions',
-                      onTap: () => context.push('/admin/prescriptions'),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                ],
-                const SizedBox(height: 8),
-                _buildSectionTitle('ACCOUNT'),
-                _buildMenuSection([
-                  MenuItemTile(
-                    icon: const Icon(Icons.receipt_long, color: AppColors.primary, size: 18),
-                    iconBg: const Color(0xFFE1F5EE),
-                    title: 'My Orders',
-                    subtitle: 'Track & manage your orders',
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$activeCount active',
-                        style: GoogleFonts.sora(
-                          color: AppColors.error,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout_rounded),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFEBEE),
+                      foregroundColor: AppColors.error,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    onTap: () => context.go('/orders'),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.biotech, color: AppColors.labPrimary, size: 18),
-                    iconBg: AppColors.labPrimaryLight,
-                    title: 'My Lab Tests',
-                    subtitle: 'View & track lab bookings',
-                    trailing: activeLabCount > 0
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.labPrimary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '$activeLabCount active',
-                              style: GoogleFonts.sora(
-                                color: AppColors.labPrimary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        : null,
-                    onTap: () => context.push('/lab/orders'),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.location_on_outlined, color: Color(0xFF1E88E5), size: 18),
-                    iconBg: const Color(0xFFE3F2FD),
-                    title: 'Saved Addresses',
-                    subtitle: 'Home, Work & more',
-                    onTap: _showAddressSheet,
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.description_outlined, color: Color(0xFF8E24AA), size: 18),
-                    iconBg: const Color(0xFFF3E5F5),
-                    title: 'My Prescriptions',
-                    subtitle: 'Medicine prescriptions',
-                    onTap: () => context.push('/my-prescriptions'),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.assignment_outlined, color: AppColors.labPrimary, size: 18),
-                    iconBg: AppColors.labPrimaryLight,
-                    title: 'Lab Prescriptions',
-                    subtitle: 'Uploaded lab prescriptions',
-                    onTap: () => context.push('/my-prescriptions?type=lab'),
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                _buildSectionTitle('SUPPORT'),
-                _buildMenuSection([
-                  MenuItemTile(
-                    icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFFFB8C00), size: 18),
-                    iconBg: const Color(0xFFFFF3E0),
-                    title: 'Chat with Us',
-                    subtitle: 'WhatsApp support',
-                    onTap: () async {
-                      final message = Uri.encodeComponent(
-                        'Hello Sushrut Aushadhi! I need help with my order.'
-                      );
-                      final url = 'https://wa.me/${RemoteConfigService.storePhone}?text=$message';
-                      await _launchUrl(url);
-                    },
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.call_outlined, color: Color(0xFF1E88E5), size: 18),
-                    iconBg: const Color(0xFFE3F2FD),
-                    title: 'Call Store',
-                    subtitle: '+91 80 XXXX XXXX',
-                    onTap: () => _launchUrl('tel:+918000000000'),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.star_outline, color: AppColors.primary, size: 18),
-                    iconBg: const Color(0xFFE1F5EE),
-                    title: 'Rate the App',
-                    subtitle: 'Share your feedback',
-                    onTap: () => _launchUrl('https://play.google.com/store/apps'),
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                _buildSectionTitle('LEGAL'),
-                _buildMenuSection([
-                  MenuItemTile(
-                    icon: const Text('🏥', style: TextStyle(fontSize: 18)),
-                    iconBg: const Color(0xFFE1F5EE),
-                    title: 'About Sushrut Aushadhi',
-                    subtitle: 'Our story, license & contact',
-                    onTap: () => _showAboutDialog(context),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.lock_outline, color: AppColors.primary, size: 18),
-                    iconBg: const Color(0xFFE1F5EE),
-                    title: 'Privacy Policy',
-                    onTap: () => _launchUrl('https://sushrutaushadhi.com/privacy'),
-                  ),
-                  MenuItemTile(
-                    icon: const Icon(Icons.description_outlined, color: AppColors.primary, size: 18),
-                    iconBg: const Color(0xFFE1F5EE),
-                    title: 'Terms of Service',
-                    onTap: () => _launchUrl('https://sushrutaushadhi.com/terms'),
-                  ),
-                ]),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _logout,
-                      icon: const Icon(Icons.logout),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFEBEE),
-                        foregroundColor: AppColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      label: Text(
-                        'Logout',
-                        style: GoogleFonts.sora(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                    label: Text(
+                      'Logout',
+                      style: GoogleFonts.sora(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: GestureDetector(
-                    onTap: _testCrash,
-                    child: Text(
-                      'Sushrut Aushadhi v1.0.0',
-                      style: GoogleFonts.sora(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: _testCrash,
+                  child: Text(
+                    'Sushrut Aushadhi v${AppStrings.appVersion}',
+                    style: GoogleFonts.sora(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -378,217 +356,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeroHeader(UserModel? user, {int totalOrders = 0}) {
-    final isCompact = context.isCompactWidth;
-    final name = user?.name ?? 'Guest';
-    final initials =
-        name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
-    final phone = user?.phone ?? '';
-
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0F6E56), Color(0xFF1D9E75)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -30,
-            right: -30,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.07),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -20,
-            left: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                isCompact ? 16 : 24,
-                isCompact ? 16 : 24,
-                isCompact ? 16 : 24,
-                20,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: isCompact ? 52 : 60,
-                        height: isCompact ? 52 : 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
-                            width: 2.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            initials.isNotEmpty ? initials : 'GU',
-                            style: GoogleFonts.sora(
-                              color: Colors.white,
-                              fontSize: isCompact ? 18 : 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.sora(
-                                color: Colors.white,
-                                fontSize: isCompact ? 15 : 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (phone.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                phone,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.sora(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (user != null)
-                        TextButton(
-                          onPressed: _showEditProfileSheet,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: Text('Edit', style: GoogleFonts.sora(fontSize: 12)),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final useWrap = constraints.maxWidth < 360;
-                      final itemWidth = useWrap ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth / 3 - 8;
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          _buildStatCard('Total Orders', '$totalOrders', Icons.shopping_bag, itemWidth),
-                          _buildStatCard('Total Saved', '\u20B90', Icons.savings, itemWidth),
-                          _buildStatCard('Rating', '4.8', Icons.star, itemWidth),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon, double width) {
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.white, size: 16),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.sora(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.sora(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 9,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title,
-        style: GoogleFonts.sora(
-          color: AppColors.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuSection(List<Widget> children) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(children: children),
     );
   }
 
@@ -688,10 +455,12 @@ class EditProfileBottomSheet extends ConsumerStatefulWidget {
   const EditProfileBottomSheet({super.key});
 
   @override
-  ConsumerState<EditProfileBottomSheet> createState() => _EditProfileBottomSheetState();
+  ConsumerState<EditProfileBottomSheet> createState() =>
+      _EditProfileBottomSheetState();
 }
 
-class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet> {
+class _EditProfileBottomSheetState
+    extends ConsumerState<EditProfileBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _addressController;
@@ -748,7 +517,9 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
       }
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully', style: GoogleFonts.sora())),
+        SnackBar(
+            content: Text('Profile updated successfully',
+                style: GoogleFonts.sora())),
       );
     } catch (e) {
       if (!mounted) {
@@ -767,13 +538,15 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
         child: Form(
           key: _formKey,
           child: Column(
@@ -791,13 +564,16 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Edit Profile', style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Edit Profile',
+                  style: GoogleFonts.sora(
+                      fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Name',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 style: GoogleFonts.sora(),
               ),
@@ -806,7 +582,8 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
                 controller: _addressController,
                 decoration: InputDecoration(
                   labelText: 'Address',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 maxLines: 3,
                 style: GoogleFonts.sora(),
@@ -816,7 +593,8 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
                 controller: _pincodeController,
                 decoration: InputDecoration(
                   labelText: 'Pincode',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.number,
                 style: GoogleFonts.sora(),
@@ -830,7 +608,8 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isSaving
                       ? const SizedBox(
@@ -843,7 +622,8 @@ class _EditProfileBottomSheetState extends ConsumerState<EditProfileBottomSheet>
                         )
                       : Text(
                           'Save',
-                          style: GoogleFonts.sora(fontWeight: FontWeight.w600, fontSize: 16),
+                          style: GoogleFonts.sora(
+                              fontWeight: FontWeight.w600, fontSize: 16),
                         ),
                 ),
               ),
@@ -922,7 +702,9 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
       }
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Address saved successfully', style: GoogleFonts.sora())),
+        SnackBar(
+            content:
+                Text('Address saved successfully', style: GoogleFonts.sora())),
       );
 
       if (widget.redirectTo == 'cart') {
@@ -948,13 +730,15 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
         child: Form(
           key: _formKey,
           child: Column(
@@ -972,13 +756,16 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Saved Addresses', style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Saved Addresses',
+                  style: GoogleFonts.sora(
+                      fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _phoneController,
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.phone,
                 style: GoogleFonts.sora(),
@@ -988,7 +775,8 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
                 controller: _addressController,
                 decoration: InputDecoration(
                   labelText: 'Address',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 maxLines: 3,
                 style: GoogleFonts.sora(),
@@ -998,7 +786,8 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
                 controller: _pincodeController,
                 decoration: InputDecoration(
                   labelText: 'Pincode',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.number,
                 style: GoogleFonts.sora(),
@@ -1012,7 +801,8 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isSaving
                       ? const SizedBox(
@@ -1025,7 +815,8 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
                         )
                       : Text(
                           'Save Address',
-                          style: GoogleFonts.sora(fontWeight: FontWeight.w600, fontSize: 16),
+                          style: GoogleFonts.sora(
+                              fontWeight: FontWeight.w600, fontSize: 16),
                         ),
                 ),
               ),
