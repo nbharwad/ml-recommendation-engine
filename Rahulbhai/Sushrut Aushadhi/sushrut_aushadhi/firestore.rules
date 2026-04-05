@@ -46,7 +46,7 @@ service cloud.firestore {
 
     function isValidPrescriptionData() {
       let allowedKeys = ['userId', 'userPhone', 'userName', 'imageUrl',
-                        'status', 'orderId', 'notes', 'createdAt', 'updatedAt'];
+                        'status', 'prescriptionType', 'orderId', 'notes', 'createdAt', 'updatedAt'];
       return request.resource.data.keys().hasOnly(allowedKeys) &&
         request.resource.data.userId == request.auth.uid;
     }
@@ -156,12 +156,14 @@ service cloud.firestore {
     function isValidLabOrderData() {
       let allowedKeys = ['orderId', 'userId', 'userPhone', 'userName', 'homeCollectionAddress',
                         'tests', 'totalAmount', 'status', 'paymentMethod', 'paymentStatus',
-                        'notes', 'createdAt', 'updatedAt', 'completedAt', 'statusHistory'];
+                        'notes', 'createdAt', 'updatedAt', 'completedAt', 'statusHistory',
+                        'resultUploaded', 'paidAt', 'labResultUrl'];
       return request.resource.data.keys().hasOnly(allowedKeys);
     }
 
     function isValidLabOrderUpdate() {
-      let allowedKeys = ['status', 'notes', 'updatedAt', 'completedAt', 'statusHistory'];
+      let allowedKeys = ['status', 'notes', 'updatedAt', 'completedAt', 'statusHistory',
+                        'resultUploaded', 'labResultUrl', 'paymentStatus', 'paidAt'];
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
     }
 
