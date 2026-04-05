@@ -162,8 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildUserView(UserModel user, int cartItemCount) {
-    final isAdminAsync = ref.watch(isAdminFromClaimsProvider);
-    final isAdmin = isAdminAsync.valueOrNull ?? false;
+    final isAdmin = ref.watch(isAdminProvider);
     final allOrders = ref.watch(ordersProvider).valueOrNull ?? [];
     final activeCount = allOrders.where((o) =>
       o.status == OrderStatus.pending ||

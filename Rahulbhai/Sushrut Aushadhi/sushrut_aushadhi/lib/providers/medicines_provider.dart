@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/medicine_model.dart';
-import 'auth_provider.dart';
 import '../core/di/service_providers.dart';
 
 final selectedCategoryProvider = StateProvider<String>((ref) => 'all');

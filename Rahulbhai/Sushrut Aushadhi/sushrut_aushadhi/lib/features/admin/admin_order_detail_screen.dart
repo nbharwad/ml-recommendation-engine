@@ -9,7 +9,6 @@ import '../../services/remote_config_service.dart';
 import '../../core/utils/helpers.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../models/order_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../services/notification_service.dart';
 import '../../services/whatsapp_service.dart';

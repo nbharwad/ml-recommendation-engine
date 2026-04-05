@@ -40,16 +40,6 @@ final isAdminProvider = Provider<bool>((ref) {
   );
 });
 
-final isAdminFromClaimsProvider = FutureProvider<bool>((ref) async {
-  final authState = ref.watch(authStateProvider);
-  final user = authState.valueOrNull;
-  if (user == null) return false;
-
-  final idTokenResult = await user.getIdTokenResult(true);
-  final role = idTokenResult.claims?['role'] as String?;
-  return role == 'admin';
-});
-
 /// True only after the auth stream has emitted at least once AND the role
 /// future has settled. Used by the splash screen to prevent premature routing.
 final authReadyProvider = Provider<bool>((ref) {

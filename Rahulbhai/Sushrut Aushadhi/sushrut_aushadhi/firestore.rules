@@ -70,6 +70,14 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
     }
 
+    function isValidCustomerCancelUpdate() {
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      let allowedKeys = ['status', 'updatedAt', 'statusHistory', 'cancelReason'];
+      return changedKeys.hasOnly(allowedKeys) &&
+        request.resource.data.status == 'cancelled' &&
+        (resource.data.status == 'pending' || resource.data.status == 'confirmed');
+    }
+
     function isValidAdminOrderUpdate() {
       let allowedKeys = ['status', 'notes', 'updatedAt', 'updatedBy', 'assignedDeliveryId', 'deliveredAt', 'statusHistory'];
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
@@ -96,8 +104,9 @@ service cloud.firestore {
       allow read: if isSignedIn() &&
         (resource.data.userId == request.auth.uid || isAdminOrDelivery());
 
-      allow update: if isSignedIn() && 
+      allow update: if isSignedIn() &&
         ((resource.data.userId == request.auth.uid && isValidCustomerOrderUpdate()) ||
+        (resource.data.userId == request.auth.uid && isValidCustomerCancelUpdate()) ||
         (isAdmin() && isValidAdminOrderUpdate()) ||
         (isDelivery() && isValidDeliveryOrderUpdate()));
     }
@@ -172,6 +181,14 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(allowedKeys);
     }
 
+    function isValidCustomerLabCancelUpdate() {
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      let allowedKeys = ['status', 'updatedAt', 'statusHistory', 'cancelReason'];
+      return changedKeys.hasOnly(allowedKeys) &&
+        request.resource.data.status == 'cancelled' &&
+        resource.data.status == 'pending';
+    }
+
     match /labOrders/{orderId} {
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
@@ -180,7 +197,8 @@ service cloud.firestore {
       allow read: if isSignedIn() &&
         (resource.data.userId == request.auth.uid || isAdmin());
 
-      allow update: if isAdmin() && isValidLabOrderUpdate();
+      allow update: if (isAdmin() && isValidLabOrderUpdate()) ||
+        (resource.data.userId == request.auth.uid && isValidCustomerLabCancelUpdate());
 
       allow delete: if false;
     }

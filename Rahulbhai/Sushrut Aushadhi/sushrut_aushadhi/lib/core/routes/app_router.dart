@@ -78,8 +78,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       if (location.startsWith('/admin') && !authReady) return '/home';
 
       if (location.startsWith('/admin')) {
-        final isAdminAsync = ref.read(isAdminFromClaimsProvider);
-        final isAdmin = isAdminAsync.valueOrNull ?? false;
+        final isAdmin = ref.read(isAdminProvider);
         if (!isAdmin) return '/home';
       }
 

@@ -56,23 +56,31 @@ const VALID_STATUS_TRANSITIONS = {
 };
 
 async function getAdminTokens() {
-  const snapshot = await db.collection('users').where('isAdmin', '==', true).get();
+  const snapshot = await db.collection('users').where('role', '==', 'admin').get();
   const tokens = [];
   snapshot.forEach(doc => {
     const data = doc.data();
-    if (data.fcmToken) {
+    // Collect all tokens from fcmTokens map (multi-device support)
+    if (data.fcmTokens && typeof data.fcmTokens === 'object') {
+      tokens.push(...Object.values(data.fcmTokens));
+    } else if (data.fcmToken) {
+      // Fallback to legacy single-token field
       tokens.push(data.fcmToken);
     }
   });
-  return tokens;
+  return [...new Set(tokens)]; // deduplicate
 }
 
-async function getUserToken(userId) {
+// Returns all FCM tokens for a user across all their devices.
+async function getUserTokens(userId) {
   const doc = await db.collection('users').doc(userId).get();
-  if (doc.exists) {
-    return doc.data().fcmToken;
+  if (!doc.exists) return [];
+  const data = doc.data();
+  if (data.fcmTokens && typeof data.fcmTokens === 'object') {
+    return [...new Set(Object.values(data.fcmTokens))];
   }
-  return null;
+  if (data.fcmToken) return [data.fcmToken];
+  return [];
 }
 
 async function sendNotification(tokens, title, body, data) {
@@ -120,10 +128,29 @@ async function sendNotification(tokens, title, body, data) {
 
 async function deleteInvalidToken(userId, token) {
   try {
-    await db.collection('users').doc(userId).update({
-      fcmToken: FieldValue.delete(),
-    });
-    console.log(`Deleted invalid FCM token for user ${userId}`);
+    const doc = await db.collection('users').doc(userId).get();
+    if (!doc.exists) return;
+    const data = doc.data();
+    const update = {};
+
+    // Remove from legacy single-token field if it matches
+    if (data.fcmToken === token) {
+      update.fcmToken = FieldValue.delete();
+    }
+
+    // Remove matching entry from fcmTokens map
+    if (data.fcmTokens && typeof data.fcmTokens === 'object') {
+      for (const [deviceId, storedToken] of Object.entries(data.fcmTokens)) {
+        if (storedToken === token) {
+          update[`fcmTokens.${deviceId}`] = FieldValue.delete();
+        }
+      }
+    }
+
+    if (Object.keys(update).length > 0) {
+      await db.collection('users').doc(userId).update(update);
+      console.log(`Deleted invalid FCM token for user ${userId}`);
+    }
   } catch (error) {
     console.error(`Error deleting invalid token for user ${userId}:`, error);
   }
@@ -209,19 +236,44 @@ exports.validateAndCalculateOrder = onDocumentCreated(
         return { status: 'deleted', reason: 'no_items' };
       });
     }
-    
+
+    // Fetch actual prices from Firestore — never trust client-submitted prices
     for (const item of items) {
-      const price = parseFloat(item.price) || 0;
+      const medicineId = item.medicineId;
+      if (!medicineId) {
+        console.error(`Order ${orderId}: item missing medicineId, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: 'missing_medicine_id' };
+        });
+      }
+
+      const medicineDoc = await db.collection('medicines').doc(medicineId).get();
+      if (!medicineDoc.exists) {
+        console.error(`Order ${orderId}: medicine ${medicineId} not found, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: `medicine_not_found:${medicineId}` };
+        });
+      }
+
+      const medicineData = medicineDoc.data();
+      if (medicineData.isActive === false) {
+        console.error(`Order ${orderId}: medicine ${medicineId} is inactive, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: `medicine_inactive:${medicineId}` };
+        });
+      }
+
+      const actualPrice = parseFloat(medicineData.price) || 0;
       const quantity = parseInt(item.quantity) || 0;
-      calculatedTotal += price * quantity;
+      calculatedTotal += actualPrice * quantity;
     }
-    
+
     const submittedTotal = parseFloat(orderData.totalAmount) || 0;
     const difference = Math.abs(calculatedTotal - submittedTotal);
-    
+
     if (difference > 1) {
       console.log(`Order ${orderId}: total mismatch. Submitted: ${submittedTotal}, Calculated: ${calculatedTotal}`);
-      
+
       return event.data.ref.update({
         totalAmount: calculatedTotal,
         originalSubmittedAmount: submittedTotal,
@@ -233,7 +285,7 @@ exports.validateAndCalculateOrder = onDocumentCreated(
         return { status: 'corrected', original: submittedTotal, corrected: calculatedTotal };
       });
     }
-    
+
     return event.data.ref.update({
       totalAmount: calculatedTotal,
       isTotalValidated: true,
@@ -243,6 +295,87 @@ exports.validateAndCalculateOrder = onDocumentCreated(
       return { status: 'valid', total: calculatedTotal };
     }).catch(error => {
       console.error(`Error validating order ${orderId}:`, error);
+      return { status: 'error', error: error.message };
+    });
+  }
+);
+
+exports.validateAndCalculateLabOrder = onDocumentCreated(
+  'labOrders/{orderId}',
+  async (event) => {
+    const orderData = event.data.data();
+    const orderId = event.params.orderId;
+
+    console.log(`Validating lab order: ${orderId}`);
+
+    const tests = orderData.tests || [];
+
+    if (tests.length === 0) {
+      return event.data.ref.delete().then(() => {
+        console.log(`Lab order ${orderId} deleted: no tests`);
+        return { status: 'deleted', reason: 'no_tests' };
+      });
+    }
+
+    let calculatedTotal = 0;
+
+    // Fetch actual prices from Firestore — never trust client-submitted prices
+    for (const test of tests) {
+      const testId = test.testId;
+      if (!testId) {
+        console.error(`Lab order ${orderId}: test item missing testId, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: 'missing_test_id' };
+        });
+      }
+
+      const testDoc = await db.collection('lab_tests').doc(testId).get();
+      if (!testDoc.exists) {
+        console.error(`Lab order ${orderId}: test ${testId} not found, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: `test_not_found:${testId}` };
+        });
+      }
+
+      const testData = testDoc.data();
+      if (testData.active === false) {
+        console.error(`Lab order ${orderId}: test ${testId} is inactive, rejecting order`);
+        return event.data.ref.delete().then(() => {
+          return { status: 'deleted', reason: `test_inactive:${testId}` };
+        });
+      }
+
+      const actualPrice = parseFloat(testData.price) || 0;
+      calculatedTotal += actualPrice;
+    }
+
+    const submittedTotal = parseFloat(orderData.totalAmount) || 0;
+    const difference = Math.abs(calculatedTotal - submittedTotal);
+
+    if (difference > 1) {
+      console.log(`Lab order ${orderId}: total mismatch. Submitted: ${submittedTotal}, Calculated: ${calculatedTotal}`);
+
+      return event.data.ref.update({
+        totalAmount: calculatedTotal,
+        originalSubmittedAmount: submittedTotal,
+        isTotalValidated: true,
+        validatedAt: FieldValue.serverTimestamp(),
+        validationNote: `Total was corrected from ${submittedTotal} to ${calculatedTotal}`
+      }).then(() => {
+        console.log(`Lab order ${orderId} total corrected to ${calculatedTotal}`);
+        return { status: 'corrected', original: submittedTotal, corrected: calculatedTotal };
+      });
+    }
+
+    return event.data.ref.update({
+      totalAmount: calculatedTotal,
+      isTotalValidated: true,
+      validatedAt: FieldValue.serverTimestamp()
+    }).then(() => {
+      console.log(`Lab order ${orderId} validated successfully. Total: ${calculatedTotal}`);
+      return { status: 'valid', total: calculatedTotal };
+    }).catch(error => {
+      console.error(`Error validating lab order ${orderId}:`, error);
       return { status: 'error', error: error.message };
     });
   }
@@ -465,7 +598,7 @@ exports.syncAdminClaims = onCall(async (request) => {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can sync claims');
   }
   
-  const snapshot = await db.collection('users').where('isAdmin', '==', true).get();
+  const snapshot = await db.collection('users').where('role', '==', 'admin').get();
   let synced = 0;
   let errors = [];
   
@@ -733,7 +866,7 @@ exports.sendNewOrderNotification = onDocumentCreated(
       await sendToTopic('admin_orders', title, body, data);
     }
     
-    const adminSnapshot = await db.collection('users').where('isAdmin', '==', true).get();
+    const adminSnapshot = await db.collection('users').where('role', '==', 'admin').get();
     const notificationPromises = adminSnapshot.docs.map(async (adminDoc) => {
       await db.collection('notifications').add({
         userId: adminDoc.id,
@@ -776,19 +909,21 @@ exports.sendLabOrderNotification = onDocumentCreated(
       timestamp: new Date().toISOString(),
     };
     
-    const userToken = await getUserToken(userId);
-    
-    if (userToken) {
-      const result = await sendNotification([userToken], title, body, data);
-      
+    const userTokens = await getUserTokens(userId);
+
+    if (userTokens.length > 0) {
+      const result = await sendNotification(userTokens, title, body, data);
+
       if (result.status === 'invalid_token') {
         console.log(`Invalid token for user ${userId} - cleaning up`);
-        await deleteInvalidToken(userId, userToken);
+        for (const token of userTokens) {
+          await deleteInvalidToken(userId, token);
+        }
       }
     } else {
       await sendToTopic(`customer_${userId}`, title, body, data);
     }
-    
+
     return { status: 'processed', notificationId };
   }
 );
@@ -837,14 +972,16 @@ exports.sendOrderStatusNotification = onDocumentUpdated(
     };
     
     const userId = newData.userId;
-    const userToken = await getUserToken(userId);
-    
-    if (userToken) {
-      const result = await sendNotification([userToken], title, body, data);
-      
+    const userTokens = await getUserTokens(userId);
+
+    if (userTokens.length > 0) {
+      const result = await sendNotification(userTokens, title, body, data);
+
       if (result.status === 'invalid_token') {
         console.log(`Invalid token for user ${userId} - cleaning up`);
-        await deleteInvalidToken(userId, userToken);
+        for (const token of userTokens) {
+          await deleteInvalidToken(userId, token);
+        }
       }
     } else {
       await sendToTopic(`customer_${userId}`, title, body, data);
