@@ -11,10 +11,11 @@ import '../../core/widgets/login_prompt_widget.dart';
 import '../../core/di/service_providers.dart';
 import '../../models/order_model.dart';
 import '../../models/delivery_address.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/connectivity_service.dart';
+import '../../services/delivery_details_service.dart';
+import 'widgets/delivery_details_sheet.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   final bool fromProfile;
@@ -29,7 +30,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   final _promoController = TextEditingController();
   String? _appliedPromo;
   bool _isProcessing = false;
-  bool _hasAutoProcessed = false;
 
   @override
   void dispose() {
@@ -796,6 +796,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Future<void> _placeOrder() async {
+    if (_isProcessing) return;
+
     final isOnline = await ConnectivityService.checkConnection();
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -820,8 +822,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    final requiresPrescription = ref.read(cartRequiresPrescriptionProvider);
-
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -830,85 +830,61 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
-      context.push('/login');
+      context.push('/login?from=cart');
       return;
     }
 
-    // Await the latest settled value from the stream — ensures we never validate
-    // against a stale snapshot (e.g. after returning from the profile screen).
-    final UserModel? currentUser =
-        await ref.read(currentUserProvider.future).catchError((_) => null);
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please login to place your order',
-              style: GoogleFonts.sora()),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-      context.push('/login');
-      return;
-    }
+    setState(() => _isProcessing = true);
 
-    // If returning from profile after saving address, auto-proceed without
-    // re-prompting — data is now fresh so _createOrder will use valid address.
-    if (widget.fromProfile && !_hasAutoProcessed) {
-      _hasAutoProcessed = true;
-      await _createOrder();
-      return;
-    }
+    try {
+      final details = await DeliveryDetailsService.getDetails();
 
-    // Fetch server-fresh user data for accurate profile completeness check
-    final freshUser =
-        await ref.read(firestoreServiceProvider).getUserFresh(user.uid);
+      if (!mounted) return;
 
-    // Debug logging for checkout validation
-    print("🔍 Checkout Check - Fresh Data:");
-    print(
-        "   Address: '${freshUser?.address}' (trimmed: ${freshUser?.address.trim().isNotEmpty})");
-    print("   deliveryAddress: '${freshUser?.deliveryAddress.line1}'");
-    print(
-        "   Pincode: '${freshUser?.pincode}' (trimmed: ${freshUser?.pincode.trim().isNotEmpty})");
-    print(
-        "   Phone: '${freshUser?.phone}' (trimmed: ${freshUser?.phone.trim().isNotEmpty})");
+      setState(() => _isProcessing = false);
 
-    final hasPhone = freshUser?.phone.trim().isNotEmpty ?? false;
-    final hasAddressString = freshUser?.address.trim().isNotEmpty ?? false;
-    final hasDeliveryAddress =
-        (freshUser?.deliveryAddress.line1.isNotEmpty ?? false) ||
-            (freshUser?.deliveryAddress.city.isNotEmpty ?? false) ||
-            (freshUser?.deliveryAddress.pincode.isNotEmpty ?? false);
-    final hasAddress = hasAddressString || hasDeliveryAddress;
-    final hasPincode = (freshUser?.pincode.trim().isNotEmpty ?? false) ||
-        (freshUser?.deliveryAddress.pincode.isNotEmpty ?? false);
-
-    print(
-        "   hasPhone: $hasPhone, hasAddress: $hasAddress, hasPincode: $hasPincode");
-    print("   isProfileComplete: ${hasPhone && hasAddress && hasPincode}");
-
-    if (!hasPhone || !hasAddress || !hasPincode) {
-      final saved = await showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => const _CheckoutAddressSheet(),
-      );
-      if (saved == true && mounted) {
-        await _createOrder();
+      if (!details.isComplete) {
+        _showDeliveryDetailsSheet(existingDetails: details);
+        return;
       }
-      return;
-    }
 
-    if (requiresPrescription) {
-      context.push('/prescription?type=medicine');
-      return;
-    }
+      final requiresPrescription = ref.read(cartRequiresPrescriptionProvider);
+      if (requiresPrescription) {
+        context.push('/prescription?type=medicine');
+        return;
+      }
 
-    await _createOrder();
+      await _createOrder(details);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e', style: GoogleFonts.sora()),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
-  Future<void> _createOrder() async {
+  void _showDeliveryDetailsSheet({DeliveryDetails? existingDetails}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DeliveryDetailsSheet(
+        existingDetails: existingDetails,
+        onSaved: (details) async {
+          await _createOrder(details);
+        },
+      ),
+    );
+  }
+
+  Future<void> _createOrder([DeliveryDetails? details]) async {
     setState(() => _isProcessing = true);
 
     try {
@@ -934,19 +910,33 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         );
       }).toList();
 
+      final String userPhone;
+      final String userAddress;
+      final String userPincode;
+
+      if (details != null) {
+        userPhone = details.phone;
+        userAddress = details.address;
+        userPincode = details.pincode;
+      } else {
+        userPhone = user.phone;
+        userAddress = user.address;
+        userPincode = user.pincode;
+      }
+
       final deliveryAddress = user.deliveryAddress.line1.isNotEmpty
           ? user.deliveryAddress
           : DeliveryAddress(
-              line1: user.address,
+              line1: userAddress,
               city: '',
               state: '',
-              pincode: user.pincode,
+              pincode: userPincode,
             );
 
       final order = OrderModel(
         orderId: '',
         userId: authUser.uid,
-        userPhone: user.phone,
+        userPhone: userPhone,
         userName: user.name.isNotEmpty ? user.name : 'Customer',
         deliveryAddress: deliveryAddress,
         items: orderItemsList,
@@ -1006,353 +996,5 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         setState(() => _isProcessing = false);
       }
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Inline checkout address bottom sheet — shown when profile is incomplete
-// ---------------------------------------------------------------------------
-
-class _CheckoutAddressSheet extends ConsumerStatefulWidget {
-  const _CheckoutAddressSheet();
-
-  @override
-  ConsumerState<_CheckoutAddressSheet> createState() =>
-      _CheckoutAddressSheetState();
-}
-
-class _CheckoutAddressSheetState extends ConsumerState<_CheckoutAddressSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _pincodeController = TextEditingController();
-  bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(currentUserProvider).valueOrNull;
-      if (user != null && mounted) {
-        _phoneController.text = user.phone;
-        _addressController.text = user.deliveryAddress.line1.isNotEmpty
-            ? user.deliveryAddress.line1
-            : user.address;
-        _pincodeController.text = user.deliveryAddress.pincode.isNotEmpty
-            ? user.deliveryAddress.pincode
-            : user.pincode;
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _addressController.dispose();
-    _pincodeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveAndContinue() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isSaving = true);
-    try {
-      final user = ref.read(currentUserProvider).valueOrNull;
-      if (user == null) throw Exception('User not found');
-
-      await ref.read(firestoreServiceProvider).updateUser(user.uid, {
-        'phone': _phoneController.text.trim(),
-        'address': _addressController.text.trim(),
-        'pincode': _pincodeController.text.trim(),
-      });
-
-      ref.invalidate(currentUserProvider);
-      // Wait for the stream to emit fresh data before closing
-      await ref.read(currentUserProvider.future).catchError((_) => null);
-
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Could not save details: $e', style: GoogleFonts.sora()),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Drag handle ──
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // ── Scrollable content ──
-          Flexible(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                  20, 12, 20, 16 + bottomInset + bottomPadding),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(20),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.location_on_outlined,
-                              color: AppColors.primary, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Delivery Details',
-                              style: GoogleFonts.sora(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              'Required to place your order',
-                              style: GoogleFonts.sora(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Phone
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      style: GoogleFonts.sora(fontSize: 15),
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        labelStyle:
-                            GoogleFonts.sora(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 1.5),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Phone number is required';
-                        }
-                        if (v.trim().length < 10) {
-                          return 'Enter a valid 10-digit phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Address
-                    TextFormField(
-                      controller: _addressController,
-                      keyboardType: TextInputType.streetAddress,
-                      textInputAction: TextInputAction.next,
-                      maxLines: 3,
-                      minLines: 2,
-                      style: GoogleFonts.sora(fontSize: 15),
-                      decoration: InputDecoration(
-                        labelText: 'Delivery Address',
-                        labelStyle:
-                            GoogleFonts.sora(color: AppColors.textSecondary),
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 32),
-                          child: Icon(Icons.home_outlined, size: 20),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 1.5),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Delivery address is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Pincode
-                    TextFormField(
-                      controller: _pincodeController,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.done,
-                      maxLength: 6,
-                      style: GoogleFonts.sora(fontSize: 15),
-                      onFieldSubmitted: (_) => _saveAndContinue(),
-                      decoration: InputDecoration(
-                        labelText: 'Pincode',
-                        labelStyle:
-                            GoogleFonts.sora(color: AppColors.textSecondary),
-                        prefixIcon:
-                            const Icon(Icons.pin_drop_outlined, size: 20),
-                        counterText: '',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 1.5),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Pincode is required';
-                        }
-                        if (v.trim().length != 6) {
-                          return 'Enter a valid 6-digit pincode';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Save & Continue button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: FilledButton(
-                        onPressed: _isSaving ? null : _saveAndContinue,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          disabledBackgroundColor:
-                              AppColors.primary.withAlpha(120),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2.5, color: Colors.white),
-                              )
-                            : Text(
-                                'Save & Continue',
-                                style: GoogleFonts.sora(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

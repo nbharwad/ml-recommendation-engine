@@ -12,6 +12,7 @@ import '../../core/widgets/profile_header_widget.dart';
 import '../../core/widgets/profile_menu_section.dart';
 import '../../services/remote_config_service.dart';
 import '../../core/di/service_providers.dart';
+import '../../services/delivery_details_service.dart';
 import '../../models/lab_order_model.dart';
 import '../../models/order_model.dart';
 import '../../models/user_model.dart';
@@ -504,11 +505,21 @@ class _EditProfileBottomSheetState
         throw Exception('User not found');
       }
 
+      final name = _nameController.text.trim();
+      final address = _addressController.text.trim();
+      final pincode = _pincodeController.text.trim();
+
       await ref.read(firestoreServiceProvider).updateUser(user.uid, {
-        'name': _nameController.text.trim(),
-        'address': _addressController.text.trim(),
-        'pincode': _pincodeController.text.trim(),
+        'name': name,
       });
+
+      if (address.isNotEmpty || pincode.isNotEmpty) {
+        await DeliveryDetailsService.saveDetails(
+          phone: user.phone,
+          address: address,
+          pincode: pincode,
+        );
+      }
 
       ref.invalidate(currentUserProvider);
 
@@ -525,8 +536,14 @@ class _EditProfileBottomSheetState
       if (!mounted) {
         return;
       }
+      String msg = e.toString().replaceAll('Exception:', '').trim();
+      if (msg.contains('permission')) {
+        msg = 'Permission denied. Please logout and login again.';
+      } else if (msg.contains('cloud_firestore')) {
+        msg = 'Connection error. Check internet and try again.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e', style: GoogleFonts.sora())),
+        SnackBar(content: Text(msg, style: GoogleFonts.sora())),
       );
     } finally {
       if (mounted) {
@@ -684,16 +701,15 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
     setState(() => _isSaving = true);
 
     try {
-      final user = ref.read(currentUserProvider).value;
-      if (user == null) {
-        throw Exception('User not found');
-      }
+      final phone = _phoneController.text.trim();
+      final address = _addressController.text.trim();
+      final pincode = _pincodeController.text.trim();
 
-      await ref.read(firestoreServiceProvider).updateUser(user.uid, {
-        'phone': _phoneController.text.trim(),
-        'address': _addressController.text.trim(),
-        'pincode': _pincodeController.text.trim(),
-      });
+      await DeliveryDetailsService.saveDetails(
+        phone: phone,
+        address: address,
+        pincode: pincode,
+      );
 
       ref.invalidate(currentUserProvider);
 
@@ -717,8 +733,14 @@ class _AddressBottomSheetState extends ConsumerState<AddressBottomSheet> {
       if (!mounted) {
         return;
       }
+      String msg = e.toString().replaceAll('Exception:', '').trim();
+      if (msg.contains('permission')) {
+        msg = 'Permission denied. Please logout and login again.';
+      } else if (msg.contains('cloud_firestore')) {
+        msg = 'Connection error. Check internet and try again.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e', style: GoogleFonts.sora())),
+        SnackBar(content: Text(msg, style: GoogleFonts.sora())),
       );
     } finally {
       if (mounted) {

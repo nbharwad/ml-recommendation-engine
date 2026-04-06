@@ -28,8 +28,31 @@ service cloud.firestore {
     }
 
     function isValidUserData() {
-      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress', 'fcmToken', 'fcmTokens', 'createdAt', 'role', 'updatedAt', 'lastLoginAt', 'isActive'];
+      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress', 'fcmToken', 'fcmTokens', 'createdAt', 'updatedAt', 'lastLoginAt', 'isActive'];
       return request.resource.data.keys().hasOnly(allowedKeys);
+    }
+
+    function isValidUserCreate() {
+      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress', 'fcmToken', 'fcmTokens', 'createdAt', 'updatedAt', 'lastLoginAt', 'isActive'];
+      return request.resource.data.keys().hasOnly(allowedKeys) &&
+        !('isAdmin' in request.resource.data) &&
+        !('role' in request.resource.data);
+    }
+
+    function isOwnerSafeUpdate() {
+      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress',
+                         'fcmToken', 'fcmTokens', 'updatedAt', 'lastLoginAt', 'isActive'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys) &&
+        !('isAdmin' in request.resource.data.diff(resource.data).affectedKeys()) &&
+        !('role' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    function isOwnerSafeCreateOrMerge() {
+      let allowedKeys = ['name', 'phone', 'email', 'address', 'pincode', 'deliveryAddress',
+                         'fcmToken', 'fcmTokens', 'updatedAt', 'lastLoginAt', 'isActive'];
+      return request.resource.data.keys().hasOnly(allowedKeys) &&
+        !('isAdmin' in request.resource.data) &&
+        !('role' in request.resource.data);
     }
 
     // For updates: only validate the changed keys (diff), not the full document.
@@ -101,9 +124,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow create: if isSignedIn() && userId == request.auth.uid && isValidUserData();
+      allow create: if isSignedIn() && userId == request.auth.uid && isValidUserCreate();
       allow read: if isSignedIn() && (userId == request.auth.uid || isAdmin());
       allow update: if isSignedIn() && (userId == request.auth.uid || isAdmin()) && isValidUserUpdate();
+      allow update: if isSignedIn() && userId == request.auth.uid && (isOwnerSafeUpdate() || isOwnerSafeCreateOrMerge());
     }
 
     match /orders/{orderId} {
