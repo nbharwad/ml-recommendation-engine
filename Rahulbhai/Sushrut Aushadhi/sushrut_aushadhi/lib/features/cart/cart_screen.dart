@@ -924,14 +924,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         userPincode = user.pincode;
       }
 
-      final deliveryAddress = user.deliveryAddress.line1.isNotEmpty
-          ? user.deliveryAddress
-          : DeliveryAddress(
-              line1: userAddress,
-              city: '',
-              state: '',
-              pincode: userPincode,
-            );
+      final deliveryAddress = DeliveryAddress(
+        line1: userAddress,
+        line2: user.deliveryAddress.line2,
+        city: user.deliveryAddress.city,
+        state: user.deliveryAddress.state,
+        pincode: userPincode,
+      );
 
       final order = OrderModel(
         orderId: '',
@@ -948,10 +947,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       final newOrderId =
           await ref.read(firestoreServiceProvider).placeOrder(order);
 
-      final shortOrderId = newOrderId.length > 6
-          ? newOrderId.substring(newOrderId.length - 6).toUpperCase()
-          : newOrderId.toUpperCase();
-
       if (!mounted) {
         return;
       }
@@ -966,11 +961,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               })
           .toList();
 
-      final deliveryAddressString = user.deliveryAddress.line1.isNotEmpty
-          ? user.deliveryAddress.toDisplayString()
-          : user.address.isNotEmpty
-              ? user.address
-              : 'Address not provided';
+      final deliveryAddressString = deliveryAddress.toDisplayString().isNotEmpty
+          ? deliveryAddress.toDisplayString()
+          : 'Address not provided';
 
       ref.read(cartProvider.notifier).clearCart();
 

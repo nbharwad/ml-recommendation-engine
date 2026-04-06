@@ -12,6 +12,7 @@ import '../../core/utils/helpers.dart';
 import '../../core/widgets/empty_state_widget.dart';
 import '../../core/widgets/error_state_widget.dart';
 import '../../models/order_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../services/whatsapp_service.dart';
 
@@ -252,7 +253,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.description_outlined, size: 15, color: Colors.white),
+              const Icon(Icons.description_outlined,
+                  size: 15, color: Colors.white),
               const SizedBox(width: 5),
               Text(
                 'Rx',
@@ -269,7 +271,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
         // Refresh
         _GlassButton(
           onTap: _onRefresh,
-          child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+          child:
+              const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
         ),
       ],
     );
@@ -278,11 +281,24 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   /// Compact inline stats strip shown in expanded app bar
   Widget _buildInlineStats(_AdminOrderStats stats) {
     final items = [
-      (label: '${stats.pendingCount}', sub: 'Pending', color: AppColors.statusPending),
-      (label: '${stats.confirmedCount}', sub: 'Confirmed', color: AppColors.statusConfirmed),
-      (label: '${stats.deliveredTodayCount}', sub: 'Delivered Today', color: AppColors.statusDelivered),
       (
-        label: 'Rs ${stats.todayRevenue < 1000 ? stats.todayRevenue.toStringAsFixed(0) : '${(stats.todayRevenue / 1000).toStringAsFixed(1)}k'}',
+        label: '${stats.pendingCount}',
+        sub: 'Pending',
+        color: AppColors.statusPending
+      ),
+      (
+        label: '${stats.confirmedCount}',
+        sub: 'Confirmed',
+        color: AppColors.statusConfirmed
+      ),
+      (
+        label: '${stats.deliveredTodayCount}',
+        sub: 'Delivered Today',
+        color: AppColors.statusDelivered
+      ),
+      (
+        label:
+            'Rs ${stats.todayRevenue < 1000 ? stats.todayRevenue.toStringAsFixed(0) : '${(stats.todayRevenue / 1000).toStringAsFixed(1)}k'}',
         sub: "Today's Rev",
         color: const Color(0xFF80CBC4),
       ),
@@ -306,24 +322,84 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   // ── Orders Sliver ──────────────────────────────────────────────────────────
 
   Widget _buildOrdersSliver(AdminOrdersPageState pageState) {
-    if (pageState.isInitialLoading) {
+    // Auth loading state
+    if (pageState.authStatus == AdminAuthStatus.loading ||
+        pageState.isInitialLoading) {
       return const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16),
+              Text('Verifying admin access...'),
+            ],
+          ),
+        ),
       );
     }
 
-    if (pageState.error != null && pageState.orders.isEmpty) {
-      final errStr = pageState.error.toString();
-      final isPermission = errStr.contains('permission-denied') ||
-          errStr.contains('PERMISSION_DENIED');
+    // Auth error state
+    if (pageState.authStatus == AdminAuthStatus.error) {
       return SliverFillRemaining(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: ErrorStateWidget(
-              message: isPermission
-                  ? 'Permission denied. Ensure your account has admin access and try refreshing.'
-                  : 'Could not load orders.\n$errStr',
+              message:
+                  'Could not verify admin access.\n${pageState.errorMessage ?? ''}',
+              onRetry: _onRefresh,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Not admin state
+    if (pageState.authStatus == AdminAuthStatus.notAdmin) {
+      return const SliverFillRemaining(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: EmptyStateWidget(
+              emoji: '🔒',
+              title: 'Access Denied',
+              subtitle: 'You do not have permission to view this page.',
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Firestore error states
+    if (pageState.errorType != PageErrorType.none && pageState.orders.isEmpty) {
+      String message;
+      switch (pageState.errorType) {
+        case PageErrorType.permissionDenied:
+          message =
+              'Permission denied. Ensure your account has admin access and try refreshing.';
+          break;
+        case PageErrorType.queryPrecondition:
+          message = 'Query configuration error. Please contact support.';
+          break;
+        case PageErrorType.network:
+          message =
+              'Network error. Please check your connection and try again.';
+          break;
+        case PageErrorType.authResolution:
+          message =
+              'Could not verify admin access.\n${pageState.errorMessage ?? ''}';
+          break;
+        case PageErrorType.unknown:
+        default:
+          message = 'Could not load orders.\n${pageState.errorMessage ?? ''}';
+      }
+      return SliverFillRemaining(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ErrorStateWidget(
+              message: message,
               onRetry: _onRefresh,
             ),
           ),
@@ -441,7 +517,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
             height: 3,
             decoration: BoxDecoration(
               color: statusColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
           ),
           _buildCardHeader(order),
@@ -531,7 +608,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
           backgroundColor: const Color(0xFFE8F5E9),
           foregroundColor: const Color(0xFF1B8E3E),
           onTap: () async {
-            final itemNames = order.items.map((item) => item.medicineName).toList();
+            final itemNames =
+                order.items.map((item) => item.medicineName).toList();
             try {
               await WhatsAppService.sendOrderUpdate(
                 customerPhone: order.userPhone,
@@ -661,7 +739,9 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
               const SizedBox(width: 10),
               customerInfo,
               const SizedBox(width: 8),
-              Flexible(child: Align(alignment: Alignment.topRight, child: actionButtons)),
+              Flexible(
+                  child: Align(
+                      alignment: Alignment.topRight, child: actionButtons)),
             ],
           );
         },
@@ -814,7 +894,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                   color: AppColors.primary,
                 ),
               ),
-              if (order.prescriptionUrl != null && order.prescriptionUrl!.isNotEmpty)
+              if (order.prescriptionUrl != null &&
+                  order.prescriptionUrl!.isNotEmpty)
                 Text(
                   '📎 Prescription attached',
                   style: GoogleFonts.sora(
@@ -835,8 +916,10 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 onPressed: () => _showRejectConfirmDialog(order.orderId),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
-                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  side:
+                      BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(
@@ -851,7 +934,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   elevation: 0,
@@ -861,7 +945,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 ),
                 child: Text(
                   order.status == OrderStatus.pending ? 'Confirm' : 'Update',
-                  style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.sora(
+                      fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -906,16 +991,17 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   Future<void> _updateOrderStatus(String orderId, OrderStatus newStatus,
       {String? updatedBy}) async {
     try {
-      final orderDoc =
-          await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
+      final orderDoc = await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .get();
       if (!orderDoc.exists) return;
 
       final orderData = orderDoc.data()!;
       final currentStatus = orderData['status'] ?? 'pending';
       final userId = orderData['userId'] ?? '';
 
-      final existingHistory =
-          (orderData['statusHistory'] as List?)
+      final existingHistory = (orderData['statusHistory'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
@@ -966,7 +1052,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update order: $error', style: GoogleFonts.sora()),
+          content:
+              Text('Failed to update order: $error', style: GoogleFonts.sora()),
         ),
       );
     }
@@ -1030,7 +1117,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
               Navigator.of(dialogContext).pop();
               _updateOrderStatus(orderId, OrderStatus.cancelled);
             },
-            child: Text('Reject', style: GoogleFonts.sora(color: AppColors.error)),
+            child:
+                Text('Reject', style: GoogleFonts.sora(color: AppColors.error)),
           ),
         ],
       ),
@@ -1052,10 +1140,11 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 child: CachedNetworkImage(
                   imageUrl: url,
                   fit: BoxFit.contain,
-                  placeholder: (_, __) =>
-                      const Center(child: CircularProgressIndicator(color: Colors.white)),
+                  placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white)),
                   errorWidget: (_, __, ___) => const Center(
-                    child: Icon(Icons.broken_image, color: Colors.white, size: 64),
+                    child:
+                        Icon(Icons.broken_image, color: Colors.white, size: 64),
                   ),
                 ),
               ),
@@ -1126,14 +1215,45 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
       old.stats != stats;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     final chips = [
-      (status: 'all', label: 'All', count: stats.totalCount, color: AppColors.primary),
-      (status: 'pending', label: 'Pending', count: stats.pendingCount, color: AppColors.statusPending),
-      (status: 'confirmed', label: 'Confirmed', count: stats.confirmedCount, color: AppColors.statusConfirmed),
-      (status: 'preparing', label: 'Preparing', count: stats.preparingCount, color: AppColors.statusPreparing),
-      (status: 'outForDelivery', label: 'Out for Delivery', count: stats.outForDeliveryCount, color: AppColors.statusOutForDelivery),
-      (status: 'delivered', label: 'Delivered', count: stats.deliveredCount, color: AppColors.statusDelivered),
+      (
+        status: 'all',
+        label: 'All',
+        count: stats.totalCount,
+        color: AppColors.primary
+      ),
+      (
+        status: 'pending',
+        label: 'Pending',
+        count: stats.pendingCount,
+        color: AppColors.statusPending
+      ),
+      (
+        status: 'confirmed',
+        label: 'Confirmed',
+        count: stats.confirmedCount,
+        color: AppColors.statusConfirmed
+      ),
+      (
+        status: 'preparing',
+        label: 'Preparing',
+        count: stats.preparingCount,
+        color: AppColors.statusPreparing
+      ),
+      (
+        status: 'outForDelivery',
+        label: 'Out for Delivery',
+        count: stats.outForDeliveryCount,
+        color: AppColors.statusOutForDelivery
+      ),
+      (
+        status: 'delivered',
+        label: 'Delivered',
+        count: stats.deliveredCount,
+        color: AppColors.statusDelivered
+      ),
     ];
 
     return Material(
@@ -1178,8 +1298,8 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
                           size: 18,
                         ),
                         border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 11),
                       ),
                       style: GoogleFonts.sora(fontSize: 13),
                     ),
@@ -1209,10 +1329,14 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
                       style: GoogleFonts.sora(
                           fontSize: 12, color: AppColors.textPrimary),
                       items: const [
-                        DropdownMenuItem(value: 'newest', child: Text('Newest')),
-                        DropdownMenuItem(value: 'oldest', child: Text('Oldest')),
-                        DropdownMenuItem(value: 'amount_high', child: Text('Rs ↑')),
-                        DropdownMenuItem(value: 'amount_low', child: Text('Rs ↓')),
+                        DropdownMenuItem(
+                            value: 'newest', child: Text('Newest')),
+                        DropdownMenuItem(
+                            value: 'oldest', child: Text('Oldest')),
+                        DropdownMenuItem(
+                            value: 'amount_high', child: Text('Rs ↑')),
+                        DropdownMenuItem(
+                            value: 'amount_low', child: Text('Rs ↓')),
                       ],
                       onChanged: (v) {
                         if (v != null) onSortChanged(v);
@@ -1246,9 +1370,7 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
                       color: isSelected ? c.color : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected
-                            ? c.color
-                            : const Color(0xFFDDE3DD),
+                        color: isSelected ? c.color : const Color(0xFFDDE3DD),
                       ),
                       boxShadow: isSelected
                           ? [
@@ -1268,7 +1390,9 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
                           style: GoogleFonts.sora(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.textSecondary,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textSecondary,
                           ),
                         ),
                         if (c.count > 0) ...[

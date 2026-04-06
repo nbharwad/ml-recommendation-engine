@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/category_model.dart';
@@ -168,6 +169,11 @@ class FirestoreService {
     DocumentSnapshot? lastDoc,
     int limit = 20,
   }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    AppLogger.debug('Admin orders fetch start', tag: 'Firestore');
+    AppLogger.debug('UID: $uid, lastDoc: ${lastDoc != null}, limit: $limit',
+        tag: 'Firestore');
+
     Query<Map<String, dynamic>> query = _db
         .collection('orders')
         .orderBy('createdAt', descending: true)
@@ -177,13 +183,40 @@ class FirestoreService {
       query = query.startAfterDocument(lastDoc);
     }
 
-    final snapshot = await query.get();
-    return (
-      orders: snapshot.docs
-          .map((doc) => OrderModel.fromFirestore(doc.data(), doc.id))
-          .toList(),
-      lastDoc: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
-    );
+    try {
+      final snapshot = await query.get();
+      AppLogger.debug('Admin orders fetch end: ${snapshot.docs.length} docs',
+          tag: 'Firestore');
+      return (
+        orders: snapshot.docs
+            .map((doc) => OrderModel.fromFirestore(doc.data(), doc.id))
+            .toList(),
+        lastDoc: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      );
+    } catch (e) {
+      if (e is FirebaseException) {
+        final code = e.code;
+        final message = e.message?.toLowerCase() ?? '';
+        AppLogger.error('Admin orders fetch error', error: e, tag: 'Firestore');
+        if (code == 'permission-denied') {
+          AppLogger.warning('Permission denied for admin orders',
+              tag: 'Firestore');
+        } else if (code == 'failed-precondition') {
+          if (message.contains('index') || message.contains('query')) {
+            AppLogger.warning('Missing index for admin orders query',
+                tag: 'Firestore');
+          } else {
+            AppLogger.warning('Query precondition failed for admin orders',
+                tag: 'Firestore');
+          }
+        } else if (code == 'unavailable') {
+          AppLogger.warning('Firestore unavailable', tag: 'Firestore');
+        }
+      } else {
+        AppLogger.error('Admin orders fetch error', error: e, tag: 'Firestore');
+      }
+      rethrow;
+    }
   }
 
   Stream<List<OrderModel>> getOrdersByStatus(String status, {int limit = 100}) {

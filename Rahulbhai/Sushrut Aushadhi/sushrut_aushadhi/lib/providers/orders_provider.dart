@@ -19,21 +19,23 @@ final ordersProvider = StreamProvider<List<OrderModel>>((ref) {
 final allOrdersProvider = StreamProvider<List<OrderModel>>((ref) async* {
   final firestoreService = ref.watch(firestoreServiceProvider);
   final roleAsync = ref.watch(roleProvider);
-  
+
   if (roleAsync.valueOrNull != 'admin') {
     yield [];
     return;
   }
-  
+
   yield* firestoreService.getAllOrders();
 });
 
-final orderByStatusProvider = StreamProvider.family<List<OrderModel>, String>((ref, status) {
+final orderByStatusProvider =
+    StreamProvider.family<List<OrderModel>, String>((ref, status) {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return firestoreService.getOrdersByStatus(status);
 });
 
-final orderByIdProvider = FutureProvider.family<OrderModel?, String>((ref, orderId) async {
+final orderByIdProvider =
+    FutureProvider.family<OrderModel?, String>((ref, orderId) async {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return await firestoreService.getOrderById(orderId);
 });
@@ -42,13 +44,26 @@ final selectedStatusProvider = StateProvider<String?>((ref) => null);
 
 // ── Admin Orders Pagination ────────────────────────────────────────────────
 
+enum PageErrorType {
+  none,
+  permissionDenied,
+  queryPrecondition,
+  network,
+  authResolution,
+  unknown,
+}
+
 class AdminOrdersPageState {
   final List<OrderModel> orders;
   final DocumentSnapshot? lastDoc;
   final bool isLoadingMore;
   final bool hasMore;
   final bool isInitialLoading;
-  final Object? error;
+  final AdminAuthStatus? authStatus;
+  final PageErrorType errorType;
+  final String? errorMessage;
+  final PageErrorType paginationError;
+  final String? paginationErrorMessage;
 
   const AdminOrdersPageState({
     this.orders = const [],
@@ -56,7 +71,11 @@ class AdminOrdersPageState {
     this.isLoadingMore = false,
     this.hasMore = true,
     this.isInitialLoading = true,
-    this.error,
+    this.authStatus,
+    this.errorType = PageErrorType.none,
+    this.errorMessage,
+    this.paginationError = PageErrorType.none,
+    this.paginationErrorMessage,
   });
 
   AdminOrdersPageState copyWith({
@@ -65,7 +84,11 @@ class AdminOrdersPageState {
     bool? isLoadingMore,
     bool? hasMore,
     bool? isInitialLoading,
-    Object? error,
+    AdminAuthStatus? authStatus,
+    PageErrorType? errorType,
+    String? errorMessage,
+    PageErrorType? paginationError,
+    String? paginationErrorMessage,
   }) {
     return AdminOrdersPageState(
       orders: orders ?? this.orders,
@@ -73,7 +96,12 @@ class AdminOrdersPageState {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,
       isInitialLoading: isInitialLoading ?? this.isInitialLoading,
-      error: error ?? this.error,
+      authStatus: authStatus ?? this.authStatus,
+      errorType: errorType ?? this.errorType,
+      errorMessage: errorMessage ?? this.errorMessage,
+      paginationError: paginationError ?? this.paginationError,
+      paginationErrorMessage:
+          paginationErrorMessage ?? this.paginationErrorMessage,
     );
   }
 }
@@ -102,11 +130,37 @@ class AdminOrdersPageNotifier extends StateNotifier<AdminOrdersPageState> {
         orders: result.orders,
         lastDoc: result.lastDoc,
         hasMore: result.orders.length == _pageSize,
+        errorType: PageErrorType.none,
+        errorMessage: null,
+        paginationError: PageErrorType.none,
+        paginationErrorMessage: null,
       );
     } catch (e) {
       if (_loadId != id) return;
-      state = state.copyWith(isInitialLoading: false, error: e);
+      final errorType = _classifyError(e);
+      state = state.copyWith(
+        isInitialLoading: false,
+        errorType: errorType,
+        errorMessage: e.toString(),
+      );
     }
+  }
+
+  PageErrorType _classifyError(dynamic error) {
+    if (error is FirebaseException) {
+      final code = error.code;
+      final message = error.message?.toLowerCase() ?? '';
+
+      if (code == 'permission-denied') return PageErrorType.permissionDenied;
+      if (code == 'failed-precondition') {
+        if (message.contains('index') || message.contains('query')) {
+          return PageErrorType.queryPrecondition;
+        }
+        return PageErrorType.queryPrecondition;
+      }
+      if (code == 'unavailable') return PageErrorType.network;
+    }
+    return PageErrorType.unknown;
   }
 
   Future<void> loadNextPage() async {
@@ -122,26 +176,71 @@ class AdminOrdersPageNotifier extends StateNotifier<AdminOrdersPageState> {
         orders: [...state.orders, ...result.orders],
         lastDoc: result.lastDoc ?? state.lastDoc,
         hasMore: result.orders.length == _pageSize,
+        paginationError: PageErrorType.none,
+        paginationErrorMessage: null,
       );
-    } catch (_) {
+    } catch (e) {
       if (_loadId != id) return;
-      state = state.copyWith(isLoadingMore: false);
+      final errorType = _classifyError(e);
+      state = state.copyWith(
+        isLoadingMore: false,
+        paginationError: errorType,
+        paginationErrorMessage: e.toString(),
+      );
     }
   }
 
   Future<void> refresh() => loadFirstPage();
+
+  void setAuthLoading() {
+    state = state.copyWith(
+      isInitialLoading: true,
+      authStatus: AdminAuthStatus.loading,
+    );
+  }
+
+  void setAuthDenied() {
+    state = AdminOrdersPageState(
+      authStatus: AdminAuthStatus.notAdmin,
+      isInitialLoading: false,
+      hasMore: false,
+    );
+  }
+
+  void setAuthError(String? errorMessage) {
+    state = AdminOrdersPageState(
+      authStatus: AdminAuthStatus.error,
+      isInitialLoading: false,
+      hasMore: false,
+      errorType: PageErrorType.authResolution,
+      errorMessage: errorMessage,
+    );
+  }
 }
 
 final adminOrdersPageProvider =
     StateNotifierProvider<AdminOrdersPageNotifier, AdminOrdersPageState>((ref) {
   final notifier = AdminOrdersPageNotifier(ref.watch(firestoreServiceProvider));
-  // Gate the first load on the admin role being confirmed from the refreshed JWT.
-  // This prevents a permission-denied error when the widget builds before
-  // getIdTokenResult(true) has completed and the token still lacks the role claim.
-  ref.listen<AsyncValue<String?>>(roleProvider, (previous, next) {
-    if (next.valueOrNull == 'admin') {
+
+  // Gate loads on admin auth state - react to all states explicitly
+  ref.listen<AsyncValue<AdminAuthState>>(adminAuthStateProvider,
+      (previous, next) {
+    final authState = next.valueOrNull;
+
+    if (authState == null || authState.status == AdminAuthStatus.loading) {
+      // Loading - set loading state, do NOT fetch
+      notifier.setAuthLoading();
+    } else if (authState.status == AdminAuthStatus.notAdmin) {
+      // Not admin - clear data, set denied state
+      notifier.setAuthDenied();
+    } else if (authState.status == AdminAuthStatus.error) {
+      // Auth error - clear data, set auth error
+      notifier.setAuthError(authState.error?.toString());
+    } else if (authState.status == AdminAuthStatus.admin) {
+      // Admin - trigger fetch
       notifier.loadFirstPage();
     }
   });
+
   return notifier;
 });

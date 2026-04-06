@@ -10,7 +10,6 @@ import '../../features/admin/admin_lab_orders_screen.dart';
 import '../../features/admin/admin_lab_packages_screen.dart';
 import '../../features/admin/admin_lab_tests_screen.dart';
 import '../../features/admin/admin_order_detail_screen.dart';
-import '../../features/admin/admin_prescriptions_screen.dart';
 import '../../features/admin/admin_shell.dart';
 import '../../features/lab/lab_order_detail_screen.dart';
 import '../../features/lab/lab_order_request_screen.dart';
@@ -50,9 +49,9 @@ class GoRouterRefreshStream extends ChangeNotifier {
 final isVerifyingProvider = StateProvider<bool>((ref) => false);
 
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final authReady = ref.watch(authReadyProvider);
   final isVerifying = ref.watch(isVerifyingProvider);
-  final authListener = GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges());
+  final authListener =
+      GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges());
 
   return GoRouter(
     initialLocation: '/splash',
@@ -75,236 +74,255 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       if (user == null && isProtected) return '/login';
 
-      if (location.startsWith('/admin') && !authReady) return '/home';
-
       if (location.startsWith('/admin')) {
-        final isAdmin = ref.read(isAdminProvider);
-        if (!isAdmin) return '/home';
+        final adminAuthState = ref.read(adminAuthStateProvider).valueOrNull;
+
+        // Allow while loading - let admin shell show loading state
+        if (adminAuthState == null ||
+            adminAuthState.status == AdminAuthStatus.loading) {
+          return null;
+        }
+
+        // Redirect only for notAdmin
+        if (adminAuthState.status == AdminAuthStatus.notAdmin) {
+          return '/home';
+        }
+
+        // For admin and error: let admin shell handle it
       }
 
       return null;
     },
     routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/otp',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        final verificationId = extra?['verificationId'] as String?;
-        final phoneNumber = extra?['phoneNumber'] as String?;
-        if (verificationId == null ||
-            verificationId.isEmpty ||
-            phoneNumber == null ||
-            phoneNumber.isEmpty) {
-          return const LoginScreen();
-        }
-        return OtpScreen(
-          verificationId: verificationId,
-          phoneNumber: phoneNumber,
-        );
-      },
-    ),
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/home',
-              builder: (context, state) => const HomeScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/search',
-              builder: (context, state) => const SearchScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/cart',
-              builder: (context, state) {
-                final fromProfile = state.uri.queryParameters['fromProfile'] == 'true';
-                return CartScreen(fromProfile: fromProfile);
-              },
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/orders',
-              builder: (context, state) => const OrdersScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) {
-                final redirectTo = state.uri.queryParameters['redirectTo'];
-                return ProfileScreen(redirectTo: redirectTo);
-              },
-            ),
-          ],
-        ),
-      ],
-    ),
-    GoRoute(
-      path: '/medicine',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        final hasDirectMedicinePayload = extra != null &&
-            !extra.containsKey('medicine') &&
-            !extra.containsKey('localMedicine') &&
-            !extra.containsKey('medicineId');
-        return MedicineDetailScreen(
-          medicineId: extra?['medicineId'] as String? ?? extra?['id'] as String?,
-          medicine: hasDirectMedicinePayload ? extra : extra?['medicine'] as Map<String, dynamic>?,
-          localMedicine: extra?['localMedicine'] as Map<String, dynamic>?,
-        );
-      },
-    ),
-    GoRoute(
-      path: '/medicine/:id',
-      builder: (context, state) {
-        final medicineId = state.pathParameters['id'];
-        final extra = state.extra as Map<String, dynamic>?;
-
-        if (medicineId != null && medicineId.isNotEmpty) {
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final verificationId = extra?['verificationId'] as String?;
+          final phoneNumber = extra?['phoneNumber'] as String?;
+          if (verificationId == null ||
+              verificationId.isEmpty ||
+              phoneNumber == null ||
+              phoneNumber.isEmpty) {
+            return const LoginScreen();
+          }
+          return OtpScreen(
+            verificationId: verificationId,
+            phoneNumber: phoneNumber,
+          );
+        },
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/search',
+                builder: (context, state) => const SearchScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/cart',
+                builder: (context, state) {
+                  final fromProfile =
+                      state.uri.queryParameters['fromProfile'] == 'true';
+                  return CartScreen(fromProfile: fromProfile);
+                },
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/orders',
+                builder: (context, state) => const OrdersScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (context, state) {
+                  final redirectTo = state.uri.queryParameters['redirectTo'];
+                  return ProfileScreen(redirectTo: redirectTo);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/medicine',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final hasDirectMedicinePayload = extra != null &&
+              !extra.containsKey('medicine') &&
+              !extra.containsKey('localMedicine') &&
+              !extra.containsKey('medicineId');
           return MedicineDetailScreen(
-            medicineId: medicineId,
-            medicine: extra?['medicine'] as Map<String, dynamic>?,
+            medicineId:
+                extra?['medicineId'] as String? ?? extra?['id'] as String?,
+            medicine: hasDirectMedicinePayload
+                ? extra
+                : extra?['medicine'] as Map<String, dynamic>?,
             localMedicine: extra?['localMedicine'] as Map<String, dynamic>?,
           );
-        }
-        return const HomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/prescription',
-      builder: (context, state) {
-        final typeParam = state.uri.queryParameters['type'];
-        final prescriptionType = PrescriptionType.fromString(typeParam);
-        return PrescriptionUploadScreen(prescriptionType: prescriptionType);
-      },
-    ),
-    GoRoute(
-      path: '/my-prescriptions',
-      builder: (context, state) {
-        final typeParam = state.uri.queryParameters['type'];
-        return MyPrescriptionsScreen(typeFilter: typeParam);
-      },
-    ),
-    GoRoute(
-      path: '/order/:id',
-      builder: (context, state) {
-        final orderId = state.pathParameters['id'];
-        if (orderId == null || orderId.isEmpty) {
-          return const OrdersScreen();
-        }
-        return OrderDetailScreen(orderId: orderId);
-      },
-    ),
-    GoRoute(
-      path: '/order-confirmation',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        if (extra == null) {
+        },
+      ),
+      GoRoute(
+        path: '/medicine/:id',
+        builder: (context, state) {
+          final medicineId = state.pathParameters['id'];
+          final extra = state.extra as Map<String, dynamic>?;
+
+          if (medicineId != null && medicineId.isNotEmpty) {
+            return MedicineDetailScreen(
+              medicineId: medicineId,
+              medicine: extra?['medicine'] as Map<String, dynamic>?,
+              localMedicine: extra?['localMedicine'] as Map<String, dynamic>?,
+            );
+          }
           return const HomeScreen();
-        }
-        return OrderConfirmationScreen(
-          orderId: extra['orderId'] as String? ?? '',
-          totalAmount: (extra['totalAmount'] as num?)?.toDouble() ?? 0.0,
-          items: (extra['items'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-          deliveryAddress: extra['deliveryAddress'] as String? ?? '',
-        );
-      },
-    ),
-    GoRoute(
-      path: '/admin',
-      builder: (context, state) => const AdminShellScreen(),
-    ),
-    GoRoute(
-      path: '/admin/order/:id',
-      builder: (context, state) {
-        final orderId = state.pathParameters['id'];
-        if (orderId == null || orderId.isEmpty) {
-          return const AdminShellScreen();
-        }
-        return AdminOrderDetailScreen(orderId: orderId);
-      },
-    ),
-    GoRoute(
-      path: '/admin/prescriptions',
-      builder: (context, state) => const AdminPrescriptionsScreen(),
-    ),
-    // Lab Test routes — fix existing bug + new screens
-    GoRoute(
-      path: '/lab-order/:id',
-      builder: (context, state) {
-        final orderId = state.pathParameters['id'];
-        if (orderId == null || orderId.isEmpty) return const HomeScreen();
-        return LabOrderDetailScreen(orderId: orderId);
-      },
-    ),
-    GoRoute(
-      path: '/lab/package/:id',
-      builder: (context, state) {
-        final packageId = state.pathParameters['id'];
-        if (packageId == null || packageId.isEmpty) return const HomeScreen();
-        return LabPackageDetailScreen(packageId: packageId);
-      },
-    ),
-    GoRoute(
-      path: '/lab/book',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return LabOrderRequestScreen(
-          packageId: extra?['packageId'] as String?,
-          preselectedTestIds:
-              (extra?['testIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
-          packageName: extra?['packageName'] as String?,
-          packagePrice: (extra?['packagePrice'] as num?)?.toDouble(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/lab/orders',
-      builder: (context, state) => const LabOrdersScreen(),
-    ),
-    GoRoute(
-      path: '/admin/lab-orders',
-      builder: (context, state) => const AdminLabOrdersScreen(),
-    ),
-    GoRoute(
-      path: '/admin/lab-order/:id',
-      builder: (context, state) {
-        final orderId = state.pathParameters['id'];
-        if (orderId == null || orderId.isEmpty) return const AdminLabOrdersScreen();
-        return LabOrderDetailScreen(orderId: orderId);
-      },
-    ),
-    GoRoute(
-      path: '/admin/lab-packages',
-      builder: (context, state) => const AdminLabPackagesScreen(),
-    ),
-    GoRoute(
-      path: '/admin/lab-tests',
-      builder: (context, state) => const AdminLabTestsScreen(),
-    ),
+        },
+      ),
+      GoRoute(
+        path: '/prescription',
+        builder: (context, state) {
+          final typeParam = state.uri.queryParameters['type'];
+          final prescriptionType = PrescriptionType.fromString(typeParam);
+          return PrescriptionUploadScreen(prescriptionType: prescriptionType);
+        },
+      ),
+      GoRoute(
+        path: '/my-prescriptions',
+        builder: (context, state) {
+          final typeParam = state.uri.queryParameters['type'];
+          return MyPrescriptionsScreen(typeFilter: typeParam);
+        },
+      ),
+      GoRoute(
+        path: '/order/:id',
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'];
+          if (orderId == null || orderId.isEmpty) {
+            return const OrdersScreen();
+          }
+          return OrderDetailScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/order-confirmation',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          if (extra == null) {
+            return const HomeScreen();
+          }
+          return OrderConfirmationScreen(
+            orderId: extra['orderId'] as String? ?? '',
+            totalAmount: (extra['totalAmount'] as num?)?.toDouble() ?? 0.0,
+            items:
+                (extra['items'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+            deliveryAddress: extra['deliveryAddress'] as String? ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminShellScreen(),
+      ),
+      GoRoute(
+        path: '/admin/order/:id',
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'];
+          if (orderId == null || orderId.isEmpty) {
+            return const AdminShellScreen();
+          }
+          return AdminOrderDetailScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/admin/prescriptions',
+        redirect: (context, state) => '/admin',
+      ),
+      // Lab Test routes — fix existing bug + new screens
+      GoRoute(
+        path: '/lab-order/:id',
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'];
+          if (orderId == null || orderId.isEmpty) return const HomeScreen();
+          return LabOrderDetailScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/lab/package/:id',
+        builder: (context, state) {
+          final packageId = state.pathParameters['id'];
+          if (packageId == null || packageId.isEmpty) return const HomeScreen();
+          return LabPackageDetailScreen(packageId: packageId);
+        },
+      ),
+      GoRoute(
+        path: '/lab/book',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return LabOrderRequestScreen(
+            packageId: extra?['packageId'] as String?,
+            preselectedTestIds: (extra?['testIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [],
+            packageName: extra?['packageName'] as String?,
+            packagePrice: (extra?['packagePrice'] as num?)?.toDouble(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/lab/orders',
+        builder: (context, state) => const LabOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/lab-orders',
+        builder: (context, state) => const AdminLabOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/lab-order/:id',
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'];
+          if (orderId == null || orderId.isEmpty)
+            return const AdminLabOrdersScreen();
+          return LabOrderDetailScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/admin/lab-packages',
+        builder: (context, state) => const AdminLabPackagesScreen(),
+      ),
+      GoRoute(
+        path: '/admin/lab-tests',
+        builder: (context, state) => const AdminLabTestsScreen(),
+      ),
     ],
   );
 });

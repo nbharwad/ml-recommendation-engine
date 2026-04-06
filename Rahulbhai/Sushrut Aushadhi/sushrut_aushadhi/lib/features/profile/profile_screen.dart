@@ -13,6 +13,7 @@ import '../../core/widgets/profile_menu_section.dart';
 import '../../services/remote_config_service.dart';
 import '../../core/di/service_providers.dart';
 import '../../services/delivery_details_service.dart';
+import '../../models/delivery_address.dart';
 import '../../models/lab_order_model.dart';
 import '../../models/order_model.dart';
 import '../../models/user_model.dart';
@@ -514,11 +515,19 @@ class _EditProfileBottomSheetState
       });
 
       if (address.isNotEmpty || pincode.isNotEmpty) {
-        await DeliveryDetailsService.saveDetails(
-          phone: user.phone,
-          address: address,
+        final mergedAddress = DeliveryAddress(
+          line1: address,
+          line2: user.deliveryAddress.line2,
+          city: user.deliveryAddress.city,
+          state: user.deliveryAddress.state,
           pincode: pincode,
         );
+
+        await ref.read(firestoreServiceProvider).updateUser(user.uid, {
+          'address': address,
+          'pincode': pincode,
+          'deliveryAddress': mergedAddress.toMap(),
+        });
       }
 
       ref.invalidate(currentUserProvider);

@@ -8,6 +8,7 @@ import '../../models/lab_order_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lab_providers.dart';
 import 'admin_orders_screen.dart';
+import 'admin_prescriptions_screen.dart';
 
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
@@ -23,7 +24,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -34,9 +35,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = ref.watch(isAdminProvider);
+    final adminAuthState = ref.watch(adminAuthStateProvider);
+    final authState = adminAuthState.valueOrNull;
 
-    if (!isAdmin) {
+    if (authState == null || authState.status == AdminAuthStatus.loading) {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -45,7 +47,33 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => context.go('/home'),
           ),
-          title: Text('Access Denied', style: GoogleFonts.sora(color: Colors.white)),
+          title: Text('Verifying Access',
+              style: GoogleFonts.sora(color: Colors.white)),
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16),
+              Text('Verifying admin access...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (authState.status == AdminAuthStatus.error) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => context.go('/home'),
+          ),
+          title: Text('Access Error',
+              style: GoogleFonts.sora(color: Colors.white)),
         ),
         body: Center(
           child: Padding(
@@ -53,11 +81,54 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline, size: 64, color: AppColors.primary),
+                const Icon(Icons.error_outline,
+                    size: 64, color: AppColors.error),
+                const SizedBox(height: 16),
+                Text('Could not verify admin access',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.sora(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(authState.error?.toString() ?? 'Unknown error',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.sora(color: AppColors.textSecondary)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(adminAuthStateProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (authState.status == AdminAuthStatus.notAdmin) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => context.go('/home'),
+          ),
+          title: Text('Access Denied',
+              style: GoogleFonts.sora(color: Colors.white)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline,
+                    size: 64, color: AppColors.primary),
                 const SizedBox(height: 16),
                 Text('Admin Access Required',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: GoogleFonts.sora(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text('You do not have permission to view this page.',
                     textAlign: TextAlign.center,
@@ -69,6 +140,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
       );
     }
 
+    // admin - render tabs
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -83,6 +155,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
                 children: const [
                   AdminOrdersScreen(),
                   _LabDashboard(),
+                  _KeepAlive(child: AdminPrescriptionsScreen()),
                 ],
               ),
             ),
@@ -148,16 +221,42 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen>
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white.withValues(alpha: 0.55),
-            labelStyle: GoogleFonts.sora(fontWeight: FontWeight.bold, fontSize: 14),
-            unselectedLabelStyle: GoogleFonts.sora(fontWeight: FontWeight.w500, fontSize: 14),
+            labelStyle:
+                GoogleFonts.sora(fontWeight: FontWeight.bold, fontSize: 14),
+            unselectedLabelStyle:
+                GoogleFonts.sora(fontWeight: FontWeight.w500, fontSize: 14),
             tabs: const [
               Tab(icon: Icon(Icons.medication_outlined), text: 'Medicine'),
               Tab(icon: Icon(Icons.science_outlined), text: 'Lab'),
+              Tab(icon: Icon(Icons.description_outlined), text: 'Rx'),
             ],
           ),
         ],
       ),
     );
+  }
+}
+
+// ── KEEP ALIVE WRAPPER ────────────────────────────────────────────────────────
+// Prevents grey screen on tab switch for widgets without AutomaticKeepAliveClientMixin
+
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({required this.child});
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
@@ -285,15 +384,19 @@ class _LabStatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final todayOrders = orders.where((o) => o.createdAt.isAfter(today)).toList();
+    final todayOrders =
+        orders.where((o) => o.createdAt.isAfter(today)).toList();
 
-    final pending = orders.where((o) => o.status == LabOrderStatus.pending).length;
-    final completedToday = todayOrders.where((o) => o.status == LabOrderStatus.completed).length;
+    final pending =
+        orders.where((o) => o.status == LabOrderStatus.pending).length;
+    final completedToday =
+        todayOrders.where((o) => o.status == LabOrderStatus.completed).length;
     final todayRevenue = todayOrders
         .where((o) => o.paymentStatus == 'paid')
         .fold(0.0, (sum, o) => sum + o.totalAmount);
     final pendingPayments = orders
-        .where((o) => o.paymentStatus != 'paid' && o.status != LabOrderStatus.cancelled)
+        .where((o) =>
+            o.paymentStatus != 'paid' && o.status != LabOrderStatus.cancelled)
         .length;
 
     return GridView.count(
@@ -304,10 +407,26 @@ class _LabStatsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: 2.2,
       children: [
-        _StatCard(label: 'Pending', value: '$pending', color: Colors.orange, icon: Icons.pending_actions_rounded),
-        _StatCard(label: 'Completed Today', value: '$completedToday', color: AppColors.primary, icon: Icons.check_circle_outline_rounded),
-        _StatCard(label: 'Today Revenue', value: 'Rs ${todayRevenue.toStringAsFixed(0)}', color: const Color(0xFF0E8E62), icon: Icons.payments_rounded),
-        _StatCard(label: 'Pending Payments', value: '$pendingPayments', color: AppColors.error, icon: Icons.warning_amber_rounded),
+        _StatCard(
+            label: 'Pending',
+            value: '$pending',
+            color: Colors.orange,
+            icon: Icons.pending_actions_rounded),
+        _StatCard(
+            label: 'Completed Today',
+            value: '$completedToday',
+            color: AppColors.primary,
+            icon: Icons.check_circle_outline_rounded),
+        _StatCard(
+            label: 'Today Revenue',
+            value: 'Rs ${todayRevenue.toStringAsFixed(0)}',
+            color: const Color(0xFF0E8E62),
+            icon: Icons.payments_rounded),
+        _StatCard(
+            label: 'Pending Payments',
+            value: '$pendingPayments',
+            color: AppColors.error,
+            icon: Icons.warning_amber_rounded),
       ],
     );
   }
@@ -384,10 +503,14 @@ class _LabNavGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _LabNavItem('Lab Orders', Icons.science_outlined, const Color(0xFF0277BD), '/admin/lab-orders'),
-      _LabNavItem('Lab Packages', Icons.inventory_2_outlined, const Color(0xFF6A1B9A), '/admin/lab-packages'),
-      _LabNavItem('Manage Tests', Icons.biotech_outlined, const Color(0xFF00838F), '/admin/lab-tests'),
-      _LabNavItem('Lab Prescriptions', Icons.description_outlined, const Color(0xFFE65100), '/admin/prescriptions'),
+      _LabNavItem('Lab Orders', Icons.science_outlined, const Color(0xFF0277BD),
+          '/admin/lab-orders'),
+      _LabNavItem('Lab Packages', Icons.inventory_2_outlined,
+          const Color(0xFF6A1B9A), '/admin/lab-packages'),
+      _LabNavItem('Manage Tests', Icons.biotech_outlined,
+          const Color(0xFF00838F), '/admin/lab-tests'),
+      _LabNavItem('Lab Prescriptions', Icons.description_outlined,
+          const Color(0xFFE65100), '/admin/prescriptions'),
     ];
 
     return GridView.count(
@@ -474,8 +597,13 @@ class _PendingLabOrderCard extends StatelessWidget {
               radius: 18,
               backgroundColor: const Color(0xFF00897B),
               child: Text(
-                order.userName.isNotEmpty ? order.userName[0].toUpperCase() : 'U',
-                style: GoogleFonts.sora(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                order.userName.isNotEmpty
+                    ? order.userName[0].toUpperCase()
+                    : 'U',
+                style: GoogleFonts.sora(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
               ),
             ),
             const SizedBox(width: 12),
@@ -485,16 +613,19 @@ class _PendingLabOrderCard extends StatelessWidget {
                 children: [
                   Text(
                     order.userName.isNotEmpty ? order.userName : 'Customer',
-                    style: GoogleFonts.sora(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: GoogleFonts.sora(
+                        fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   Text(
                     '${order.testCount} test${order.testCount == 1 ? '' : 's'} · Rs ${order.totalAmount.toStringAsFixed(0)}',
-                    style: GoogleFonts.sora(color: AppColors.textSecondary, fontSize: 11),
+                    style: GoogleFonts.sora(
+                        color: AppColors.textSecondary, fontSize: 11),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textSecondary),
+            const Icon(Icons.arrow_forward_ios,
+                size: 14, color: AppColors.textSecondary),
           ],
         ),
       ),
