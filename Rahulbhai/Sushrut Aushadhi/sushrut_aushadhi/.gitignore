@@ -53,3 +53,28 @@ android/app/google-services.json
 
 # Test coverage
 coverage/
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Signing keys (NEVER COMMIT)
+*.keystore
+*.jks
+key.properties
+
+# Firebase service account (NEVER COMMIT)
+service-account.json
+
+# Node (Firebase Functions)
+node_modules/
+functions/node_modules/
+package-lock.json
+
+# Kotlin build sessions
+android/.kotlin/
+
+# Misc
+nul
+test.txt
