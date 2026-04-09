@@ -1,0 +1,4717 @@
+[
+  {
+    "code": "CO-4",
+    "group": "CO",
+    "category": "coding error",
+    "description": "The procedure code is inconsistent with the modifier used or a required modifier is missing.",
+    "causes": [
+      "Incorrect modifier combination",
+      "Missing required modifier"
+    ],
+    "actions": [
+      "Verify modifier usage against NCCI/Payer rules",
+      "Append correct modifier and rebill"
+    ],
+    "appeal_likelihood": "high"
+  },
+  {
+    "code": "CO-16",
+    "group": "CO",
+    "category": "missing information",
+    "description": "Claim/service lacks information which is needed for adjudication.",
+    "causes": [
+      "Missing documentation",
+      "Missing patient data"
+    ],
+    "actions": [
+      "Identify missing data in 835/ERA",
+      "Provide required info and rebill"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-18",
+    "group": "CO",
+    "category": "duplicate",
+    "description": "Exact duplicate claim/service.",
+    "causes": [
+      "Claim resubmitted too early",
+      "Provider error"
+    ],
+    "actions": [
+      "Check original claim status",
+      "Verify if payment was received"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "CO-29",
+    "group": "CO",
+    "category": "timely filing",
+    "description": "The time limit for filing has expired.",
+    "causes": [
+      "Late submission",
+      "Clearinghouse delay"
+    ],
+    "actions": [
+      "Check proof of timely filing",
+      "Appeal with proof of initial submission"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-45",
+    "group": "CO",
+    "category": "contractual adjustment",
+    "description": "Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.",
+    "causes": [
+      "Standard Payer adjustment"
+    ],
+    "actions": [
+      "Write off according to contract",
+      "Verify if amount matches contract"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "CO-50",
+    "group": "CO",
+    "category": "medical necessity",
+    "description": "These are non-covered services because this is not deemed a 'medical necessity' by the payer.",
+    "causes": [
+      "Lack of clinical justification",
+      "Experimental procedure"
+    ],
+    "actions": [
+      "Submit clinical notes",
+      "Provide peer-reviewed literature"
+    ],
+    "appeal_likelihood": "high"
+  },
+  {
+    "code": "CO-97",
+    "group": "CO",
+    "category": "bundling",
+    "description": "The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated.",
+    "causes": [
+      "Procedure unbundled",
+      "Inclusive service"
+    ],
+    "actions": [
+      "Verify NCCI edits",
+      "Appeal with documentation proving separate service"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-109",
+    "group": "CO",
+    "category": "authorization",
+    "description": "Claim/service not covered by this payer/contractor. You must send the claim/service to the correct payer/contractor.",
+    "causes": [
+      "Incorrect payer identified"
+    ],
+    "actions": [
+      "Verify patient eligibility",
+      "Forward claim to correct payer"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "CO-167",
+    "group": "CO",
+    "category": "missing information",
+    "description": "This (these) diagnosis(es) is (are) not covered.",
+    "causes": [
+      "ICD code not on medical policy",
+      "Truncated code"
+    ],
+    "actions": [
+      "Verify ICD-10 coverage",
+      "Re-code to more specific diagnosis"
+    ],
+    "appeal_likelihood": "high"
+  },
+  {
+    "code": "CO-197",
+    "group": "CO",
+    "category": "authorization",
+    "description": "Precertification/authorization/notification/pre-determination absent.",
+    "causes": [
+      "No auth on file",
+      "Expired auth"
+    ],
+    "actions": [
+      "Verify if auth was obtained",
+      "Request retro-auth if allowed"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1",
+    "group": "PR",
+    "category": "patient responsibility",
+    "description": "Deductible Amount.",
+    "causes": [
+      "Patient has not met deductible"
+    ],
+    "actions": [
+      "Collect from patient"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "PR-2",
+    "group": "PR",
+    "category": "patient responsibility",
+    "description": "Coinsurance Amount.",
+    "causes": [
+      "Standard cost-sharing"
+    ],
+    "actions": [
+      "Bill patient for coinsurance"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "PR-3",
+    "group": "PR",
+    "category": "patient responsibility",
+    "description": "Copayment Amount.",
+    "causes": [
+      "Standard cost-sharing"
+    ],
+    "actions": [
+      "Collect at time of service"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "PR-96",
+    "group": "PR",
+    "category": "patient responsibility",
+    "description": "Non-covered charge(s).",
+    "causes": [
+      "Service excluded from plan"
+    ],
+    "actions": [
+      "Check EOB for details",
+      "Bill patient if applicable"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "OA-23",
+    "group": "OA",
+    "category": "other adjustment",
+    "description": "The impact of prior payer(s) adjudication including payments and/or adjustments.",
+    "causes": [
+      "Primary payer processing"
+    ],
+    "actions": [
+      "Check primary EOB",
+      "Coordinate benefits"
+    ],
+    "appeal_likelihood": "low"
+  },
+  {
+    "code": "OA-1001",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1001. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1002",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1002. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1003",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1003. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1004",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1004. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1005",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1005. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1006",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1006. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1007",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1007. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1008",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1008. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1009",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1009. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1010",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1010. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1011",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1011. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1012",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1012. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1013",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1013. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1014",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1014. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1015",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1015. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1016",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1016. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1017",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1017. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1018",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1018. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1019",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1019. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1020",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1020. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1021",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1021. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1022",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1022. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1023",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1023. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1024",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1024. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1025",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1025. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1026",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1026. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1027",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1027. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1028",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1028. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1029",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1029. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1030",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1030. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1031",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1031. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1032",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1032. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1033",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1033. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1034",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1034. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1035",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1035. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1036",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1036. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1037",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1037. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1038",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1038. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1039",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1039. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1040",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1040. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1041",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1041. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1042",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1042. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1043",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1043. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1044",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1044. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1045",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1045. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1046",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1046. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1047",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1047. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1048",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1048. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1049",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1049. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1050",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1050. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1051",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1051. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1052",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1052. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1053",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1053. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1054",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1054. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1055",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1055. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1056",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1056. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1057",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1057. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1058",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1058. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1059",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1059. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1060",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1060. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1061",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1061. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1062",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1062. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1063",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1063. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1064",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1064. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1065",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1065. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1066",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1066. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1067",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1067. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1068",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1068. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1069",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1069. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1070",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1070. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1071",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1071. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1072",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1072. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1073",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1073. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1074",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1074. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1075",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1075. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1076",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1076. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1077",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1077. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1078",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1078. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1079",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1079. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1080",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1080. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1081",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1081. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1082",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1082. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1083",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1083. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1084",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1084. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1085",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1085. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1086",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1086. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1087",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1087. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1088",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1088. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1089",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1089. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1090",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1090. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1091",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1091. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1092",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1092. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1093",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1093. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1094",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1094. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1095",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1095. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1096",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1096. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1097",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1097. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1098",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1098. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1099",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1099. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1100",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1100. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1101",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1101. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1102",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1102. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1103",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1103. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1104",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1104. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1105",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1105. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1106",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1106. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1107",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1107. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1108",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1108. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1109",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1109. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1110",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1110. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1111",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1111. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1112",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1112. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1113",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1113. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1114",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1114. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1115",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1115. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1116",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1116. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1117",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1117. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1118",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1118. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1119",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1119. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1120",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1120. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1121",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1121. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1122",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1122. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1123",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1123. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1124",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1124. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1125",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1125. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1126",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1126. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1127",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1127. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1128",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1128. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1129",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1129. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1130",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1130. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1131",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1131. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1132",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1132. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1133",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1133. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1134",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1134. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1135",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1135. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1136",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1136. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1137",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1137. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1138",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1138. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1139",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1139. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1140",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1140. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1141",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1141. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1142",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1142. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1143",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1143. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1144",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1144. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1145",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1145. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1146",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1146. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1147",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1147. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1148",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1148. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1149",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1149. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1150",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1150. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1151",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1151. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1152",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1152. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1153",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1153. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1154",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1154. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1155",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1155. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1156",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1156. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1157",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1157. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1158",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1158. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1159",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1159. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1160",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1160. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1161",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1161. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1162",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1162. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1163",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1163. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1164",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1164. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1165",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1165. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1166",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1166. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1167",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1167. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1168",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1168. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1169",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1169. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1170",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1170. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1171",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1171. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1172",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1172. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1173",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1173. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1174",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1174. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1175",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1175. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1176",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1176. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1177",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1177. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1178",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1178. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1179",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1179. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1180",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1180. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1181",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1181. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1182",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1182. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1183",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1183. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1184",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1184. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1185",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1185. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1186",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1186. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1187",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1187. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1188",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1188. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1189",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1189. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1190",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1190. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1191",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1191. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1192",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1192. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1193",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1193. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1194",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1194. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1195",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1195. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1196",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1196. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1197",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1197. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1198",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1198. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1199",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1199. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1200",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1200. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1201",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1201. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1202",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1202. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1203",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1203. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1204",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1204. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1205",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1205. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1206",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1206. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1207",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1207. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1208",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1208. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1209",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1209. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1210",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1210. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1211",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1211. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1212",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1212. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1213",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1213. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1214",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1214. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1215",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1215. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1216",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1216. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1217",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1217. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1218",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1218. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1219",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1219. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1220",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1220. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1221",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1221. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1222",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1222. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1223",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1223. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1224",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1224. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1225",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1225. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1226",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1226. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1227",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1227. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1228",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1228. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1229",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1229. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1230",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1230. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1231",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1231. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1232",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1232. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1233",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1233. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1234",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1234. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1235",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1235. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1236",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1236. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1237",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1237. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1238",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1238. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1239",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1239. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1240",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1240. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1241",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1241. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1242",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1242. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1243",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1243. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1244",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1244. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1245",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1245. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1246",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1246. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1247",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1247. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1248",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1248. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1249",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1249. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1250",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1250. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1251",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1251. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1252",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1252. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1253",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1253. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1254",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1254. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1255",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1255. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1256",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1256. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1257",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1257. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1258",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1258. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1259",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1259. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1260",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1260. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1261",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1261. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1262",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1262. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1263",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1263. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1264",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1264. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1265",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1265. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1266",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1266. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1267",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1267. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1268",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1268. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1269",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1269. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1270",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1270. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1271",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1271. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1272",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1272. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1273",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1273. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1274",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1274. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1275",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1275. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1276",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1276. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1277",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1277. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1278",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1278. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1279",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1279. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1280",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1280. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1281",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1281. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1282",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1282. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1283",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1283. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1284",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1284. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1285",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1285. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1286",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1286. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1287",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1287. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1288",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1288. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1289",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1289. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1290",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1290. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1291",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1291. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1292",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1292. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1293",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1293. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1294",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1294. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1295",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1295. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1296",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1296. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "PR-1297",
+    "group": "PR",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code PR-1297. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1298",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1298. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "OA-1299",
+    "group": "OA",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code OA-1299. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  },
+  {
+    "code": "CO-1300",
+    "group": "CO",
+    "category": "miscellaneous",
+    "description": "Generic explanation for denial code CO-1300. Consult CMS documentation.",
+    "causes": [
+      "Documentation needed",
+      "Review required"
+    ],
+    "actions": [
+      "Check claim details",
+      "Contact payer"
+    ],
+    "appeal_likelihood": "medium"
+  }
+]

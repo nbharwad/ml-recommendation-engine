@@ -1,0 +1,42 @@
+[
+  {
+    "template_id": "medical_necessity_appeal",
+    "category": "medical necessity",
+    "letter_text": "[Date]\n\n[Payer Name]\n[Appeal Department Address]\n\nRe: Appeal for Denial of [CPT Code]\nPatient: [Patient Name]\nClaim Number: [Claim Number]\nDate of Service: [Date of Service]\n\nTo Whom It May Concern,\n\nThis letter is a formal appeal for the denial of the above-referenced claim. The service was denied with code [Denial Code], citing a lack of medical necessity.\n\nBased on my clinical evaluation and the patient's medical history, I have determined that this procedure is medically necessary because: [Clinical Justification].\n\nPlease re-evaluate this claim based on the provided clinical documentation.\n\nSincerely,\n\n[Provider Name]\nNPI: [Provider NPI]",
+    "required_attachments": [
+      "Clinical notes",
+      "Diagnostic reports"
+    ],
+    "deadline_days": 60
+  },
+  {
+    "template_id": "coding_error_appeal",
+    "category": "coding error",
+    "letter_text": "[Date]\n\n[Payer Name]\n[Appeal Department Address]\n\nRe: Appeal for Denial [Denial Code] - Coding Correction\nPatient: [Patient Name]\nClaim Number: [Claim Number]\nDate of Service: [Date of Service]\n\nTo Whom It May Concern,\n\nWe are appealing the denial [Denial Code] for procedure [CPT Code]. Upon review, we believe the correct coding for this service is [CPT Code] with appropriate modifiers as supported by the attached operative report.\n\n[Clinical Justification]\n\nPlease reprocess this claim according to the corrected coding.\n\nSincerely,\n\n[Provider Name]\nNPI: [Provider NPI]",
+    "required_attachments": [
+      "Operative report",
+      "Corrected claim"
+    ],
+    "deadline_days": 90
+  },
+  {
+    "template_id": "timely_filing_appeal",
+    "category": "timely filing",
+    "letter_text": "[Date]\n\n[Payer Name]\n[Appeal Department Address]\n\nRe: Appeal for Timely Filing Denial\nPatient: [Patient Name]\nClaim Number: [Claim Number]\nDate of Service: [Date of Service]\n\nTo Whom It May Concern,\n\nThis is an appeal for the timely filing denial of claim [Claim Number]. We have attached proof of initial submission on [Date of Initial Submission], which is within the [Timely Filing Days] day limit required by [Payer Name].\n\n[Clinical Justification]\n\nThank you for your reconsideration.\n\nSincerely,\n\n[Provider Name]\nNPI: [Provider NPI]",
+    "required_attachments": [
+      "Proof of timely filing",
+      "EDI rejection report"
+    ],
+    "deadline_days": 30
+  },
+  {
+    "template_id": "pre_auth_appeal",
+    "category": "authorization",
+    "letter_text": "[Date]\n\n[Payer Name]\n[Appeal Department Address]\n\nRe: Appeal for Absence of Prior Authorization\nPatient: [Patient Name]\nClaim Number: [Claim Number]\nDate of Service: [Date of Service]\n\nTo Whom It May Concern,\n\nWe are appealing the denial of [CPT Code] for lack of prior authorization. This was an emergent situation where prior notification was not feasible. \n\n[Clinical Justification]\n\nAttached is the emergency record supporting the urgency of this service.\n\nSincerely,\n\n[Provider Name]\nNPI: [Provider NPI]",
+    "required_attachments": [
+      "Emergency record",
+      "Clinical summary"
+    ],
+    "deadline_days": 60
+  }
+]

@@ -1,0 +1,412 @@
+{
+  "UnitedHealthcare": [
+    {
+      "policy_id": "UNI-POL-100",
+      "title": "UnitedHealthcare Prior Authorization Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the prior authorization requirements and guidelines for UnitedHealthcare members. This policy applies to codes: 27447, 70553, 74177. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for prior authorization must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-101",
+      "title": "UnitedHealthcare Medical Necessity Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the medical necessity requirements and guidelines for UnitedHealthcare members. This policy applies to codes: 99215, 43239. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for medical necessity must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-102",
+      "title": "UnitedHealthcare Timely Filing Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the timely filing requirements and guidelines for UnitedHealthcare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for timely filing must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-103",
+      "title": "UnitedHealthcare Appeal Process Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the appeal process requirements and guidelines for UnitedHealthcare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for appeal process must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-104",
+      "title": "UnitedHealthcare Experimental Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the experimental services requirements and guidelines for UnitedHealthcare members. This policy applies to codes: 0001T, 0002T. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for experimental services must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-105",
+      "title": "UnitedHealthcare Preventive Care Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the preventive care requirements and guidelines for UnitedHealthcare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for preventive care must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-106",
+      "title": "UnitedHealthcare Emergency Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the emergency services requirements and guidelines for UnitedHealthcare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for emergency services must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "UNI-POL-107",
+      "title": "UnitedHealthcare Durable Medical Equipment Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the durable medical equipment requirements and guidelines for UnitedHealthcare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for durable medical equipment must meet UnitedHealthcare's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    }
+  ],
+  "Aetna": [
+    {
+      "policy_id": "AET-POL-100",
+      "title": "Aetna Prior Authorization Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the prior authorization requirements and guidelines for Aetna members. This policy applies to codes: 27447, 70553, 74177. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for prior authorization must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-101",
+      "title": "Aetna Medical Necessity Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the medical necessity requirements and guidelines for Aetna members. This policy applies to codes: 99215, 43239. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for medical necessity must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-102",
+      "title": "Aetna Timely Filing Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the timely filing requirements and guidelines for Aetna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for timely filing must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-103",
+      "title": "Aetna Appeal Process Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the appeal process requirements and guidelines for Aetna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for appeal process must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-104",
+      "title": "Aetna Experimental Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the experimental services requirements and guidelines for Aetna members. This policy applies to codes: 0001T, 0002T. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for experimental services must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-105",
+      "title": "Aetna Preventive Care Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the preventive care requirements and guidelines for Aetna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for preventive care must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-106",
+      "title": "Aetna Emergency Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the emergency services requirements and guidelines for Aetna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for emergency services must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "AET-POL-107",
+      "title": "Aetna Durable Medical Equipment Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the durable medical equipment requirements and guidelines for Aetna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for durable medical equipment must meet Aetna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    }
+  ],
+  "Cigna": [
+    {
+      "policy_id": "CIG-POL-100",
+      "title": "Cigna Prior Authorization Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the prior authorization requirements and guidelines for Cigna members. This policy applies to codes: 27447, 70553, 74177. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for prior authorization must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-101",
+      "title": "Cigna Medical Necessity Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the medical necessity requirements and guidelines for Cigna members. This policy applies to codes: 99215, 43239. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for medical necessity must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-102",
+      "title": "Cigna Timely Filing Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the timely filing requirements and guidelines for Cigna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for timely filing must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-103",
+      "title": "Cigna Appeal Process Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the appeal process requirements and guidelines for Cigna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for appeal process must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-104",
+      "title": "Cigna Experimental Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the experimental services requirements and guidelines for Cigna members. This policy applies to codes: 0001T, 0002T. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for experimental services must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-105",
+      "title": "Cigna Preventive Care Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the preventive care requirements and guidelines for Cigna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for preventive care must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-106",
+      "title": "Cigna Emergency Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the emergency services requirements and guidelines for Cigna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for emergency services must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "CIG-POL-107",
+      "title": "Cigna Durable Medical Equipment Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the durable medical equipment requirements and guidelines for Cigna members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for durable medical equipment must meet Cigna's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    }
+  ],
+  "Blue Cross Blue Shield": [
+    {
+      "policy_id": "BLU-POL-100",
+      "title": "Blue Cross Blue Shield Prior Authorization Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the prior authorization requirements and guidelines for Blue Cross Blue Shield members. This policy applies to codes: 27447, 70553, 74177. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for prior authorization must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-101",
+      "title": "Blue Cross Blue Shield Medical Necessity Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the medical necessity requirements and guidelines for Blue Cross Blue Shield members. This policy applies to codes: 99215, 43239. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for medical necessity must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-102",
+      "title": "Blue Cross Blue Shield Timely Filing Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the timely filing requirements and guidelines for Blue Cross Blue Shield members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for timely filing must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-103",
+      "title": "Blue Cross Blue Shield Appeal Process Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the appeal process requirements and guidelines for Blue Cross Blue Shield members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for appeal process must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-104",
+      "title": "Blue Cross Blue Shield Experimental Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the experimental services requirements and guidelines for Blue Cross Blue Shield members. This policy applies to codes: 0001T, 0002T. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for experimental services must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-105",
+      "title": "Blue Cross Blue Shield Preventive Care Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the preventive care requirements and guidelines for Blue Cross Blue Shield members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for preventive care must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-106",
+      "title": "Blue Cross Blue Shield Emergency Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the emergency services requirements and guidelines for Blue Cross Blue Shield members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for emergency services must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    },
+    {
+      "policy_id": "BLU-POL-107",
+      "title": "Blue Cross Blue Shield Durable Medical Equipment Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the durable medical equipment requirements and guidelines for Blue Cross Blue Shield members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for durable medical equipment must meet Blue Cross Blue Shield's clinical evidence standards.",
+      "timely_filing_days": 180,
+      "appeal_deadline_days": 60
+    }
+  ],
+  "Medicare": [
+    {
+      "policy_id": "MED-POL-100",
+      "title": "Medicare Prior Authorization Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the prior authorization requirements and guidelines for Medicare members. This policy applies to codes: 27447, 70553, 74177. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for prior authorization must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-101",
+      "title": "Medicare Medical Necessity Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the medical necessity requirements and guidelines for Medicare members. This policy applies to codes: 99215, 43239. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for medical necessity must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-102",
+      "title": "Medicare Timely Filing Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the timely filing requirements and guidelines for Medicare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for timely filing must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-103",
+      "title": "Medicare Appeal Process Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the appeal process requirements and guidelines for Medicare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for appeal process must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-104",
+      "title": "Medicare Experimental Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the experimental services requirements and guidelines for Medicare members. This policy applies to codes: 0001T, 0002T. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": true,
+      "medical_necessity_criteria": "Criteria for experimental services must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-105",
+      "title": "Medicare Preventive Care Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the preventive care requirements and guidelines for Medicare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for preventive care must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-106",
+      "title": "Medicare Emergency Services Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the emergency services requirements and guidelines for Medicare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for emergency services must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    },
+    {
+      "policy_id": "MED-POL-107",
+      "title": "Medicare Durable Medical Equipment Policy",
+      "effective_date": "2024-01-01",
+      "summary": "This policy outlines the durable medical equipment requirements and guidelines for Medicare members. Compliance with these rules is mandatory for claim reimbursement.",
+      "prior_auth_required": false,
+      "medical_necessity_criteria": "Criteria for durable medical equipment must meet Medicare's clinical evidence standards.",
+      "timely_filing_days": 365,
+      "appeal_deadline_days": 120
+    }
+  ]
+}
