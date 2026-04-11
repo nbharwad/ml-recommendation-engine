@@ -1,0 +1,193 @@
+# ============================================================================
+# API Gateway Configuration (Istio)
+# Implements Auth (JWT) + Rate Limiting + REST Routing
+# ============================================================================
+#
+# Architecture:
+# - Relies on Istio Ingress Gateway (deployed in service-mesh.yaml)
+# - Adds RequestAuthentication to validate JWT tokens
+# - Adds AuthorizationPolicy to enforce valid tokens for API endpoints
+# - Configures EnvoyFilter for local rate limiting (token bucket algorithm)
+# - Adds VirtualService for REST endpoint routing
+#
+# ENDPOINTS:
+# - POST /v1/recommendations - Get recommendations
+# - POST /v1/events - Ingest events
+# - GET /v1/features/:user_id - Get user features
+# - GET /health, /metrics, /ready - Health/metrics
+# ============================================================================
+
+---
+# 1. JWT Authentication
+# Validates JWT tokens from the Authorization header (Bearer token)
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+  namespace: istio-system # Apply at the gateway level
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  jwtRules:
+    - issuer: "https://auth.recommendation.internal/oauth2/default"
+      jwksUri: "https://auth.recommendation.internal/oauth2/default/v1/keys"
+      forwardOriginalToken: true
+
+---
+# 2. Authorization Policy for the Gateway
+# Enforces that requests to the recommendation API MUST have a valid JWT
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: require-jwt
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            requestPrincipals: ["https://auth.recommendation.internal/oauth2/default/*"]
+      to:
+        - operation:
+            methods: ["POST", "GET"]
+            paths: ["/v1/recommendations"]
+
+---
+# Allow unauthenticated access to health checks and metrics
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-public
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/health", "/ready", "/metrics", "/docs", "/openapi.json"]
+
+---
+# 3. Global Rate Limiting (EnvoyFilter)
+# Applies a local token bucket rate limit to the ingress gateway
+# Limit: 50K QPS total across the gateway (can be adjusted per client context)
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: gateway-rate-limit
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.local_ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+            stat_prefix: http_local_rate_limiter
+            token_bucket:
+              max_tokens: 50000
+              tokens_per_fill: 50000
+              fill_interval: 1s
+            filter_enabled:
+              runtime_key: local_rate_limit_enabled
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            filter_enforced:
+              runtime_key: local_rate_limit_enforced
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+
+---
+# 4. REST API Routing (VirtualService)
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: recommendation-api
+  namespace: recommendation
+spec:
+  hosts:
+    - "api.recommendation.internal"
+    - "recommendation.example.com"
+  gateways:
+    - recommendation-gateway
+  http:
+    - match:
+        - uri:
+            prefix: "/v1/recommendations"
+      route:
+        - destination:
+            host: recommendation-serving.recommendation.svc.cluster.local
+            port:
+              number: 8080
+      retries:
+        attempts: 3
+        perTryTimeout: 50ms
+      timeout: 100ms
+    
+    - match:
+        - uri:
+            prefix: "/v1/events"
+      route:
+        - destination:
+            host: ingestion-service.recommendation.svc.cluster.local
+            port:
+              number: 8080
+      timeout: 30ms
+    
+    - match:
+        - uri:
+            prefix: "/v1/features"
+      route:
+        - destination:
+            host: feature-store.recommendation.svc.cluster.local
+            port:
+              number: 8080
+      timeout: 20ms
+    
+    - match:
+        - uri:
+            prefix: "/metrics"
+      route:
+        - destination:
+            host: recommendation-serving.recommendation.svc.cluster.local
+            port:
+              number: 9092
+    
+    - match:
+        - uri:
+            exact: "/health"
+      headers:
+        GET:
+          - uri:
+              exact: "/ready"
+      route:
+        - destination:
+            host: recommendation-serving.recommendation.svc.cluster.local
+            port:
+              number: 8080
+            response_headers_to_add:
+              - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                header:
+                  key: x-local-rate-limit
+                  value: 'true'
