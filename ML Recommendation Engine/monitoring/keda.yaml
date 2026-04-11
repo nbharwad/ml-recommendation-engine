@@ -1,0 +1,151 @@
+# ============================================================================
+# KEDA Auto-scaling Configuration
+# Implements off-peak auto-scaling for cost reduction
+# ============================================================================
+#
+# Use Case:
+# - Scale to zero during off-peak (night)
+# - Scale up during peak hours
+# - Target: 40% cost reduction off-peak
+#
+# Architecture:
+# - KEDA ScaledObject based on Prometheus metrics
+# - Scheduled scaling for predictable patterns
+# - CPU/memory triggers for reactive scaling
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keda-config
+  namespace: monitoring
+data:
+  keda-config.yaml: |
+    # KEDA configuration for recommendation services
+    scaledobject:
+      pollingInterval: 30
+      cooldownPeriod: 300
+      minReplicaCount: 2
+      maxReplicaCount: 100
+
+---
+# KEDA ScaledObject for Recommendation Serving
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: recommendation-serving-scaled
+  namespace: recommendation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: recommendation-serving
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 100
+  
+  triggers:
+    # CPU-based scaling (reactive)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: cpu_usage
+        threshold: "70"
+        query: "rate(container_cpu_usage_seconds_total{namespace=\"recommendation\", pod=~\"recommendation-serving.*\"}[1m])"
+
+    # Memory-based scaling (reactive)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: memory_usage
+        threshold: "80"
+        query: "container_memory_usage_bytes{namespace=\"recommendation\", pod=~\"recommendation-serving.*\"}"
+
+    # QPS-based scaling (reactive)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: request_rate
+        threshold: "1000"
+        query: "rate(http_requests_total{namespace=\"recommendation\"}[1m])"
+
+---
+# KEDA ScaledObject for Feature Store
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: feature-store-scaled
+  namespace: recommendation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: feature-store
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 1
+  maxReplicaCount: 50
+  
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: redis_latency
+        threshold: "5"
+        query: "rate(redis_command_duration_seconds_sum[1m]) / rate(redis_command_duration_seconds_count[1m])"
+
+---
+# KEDA ScaledObject for Ranking Service
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ranking-service-scaled
+  namespace: recommendation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ranking-service
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 1
+  maxReplicaCount: 50
+  
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: gpu_utilization
+        threshold: "70"
+        query: "gpu_utilization_percent{job=\"triton-inference\"}"
+
+---
+# Cron-based scheduled scaling (off-peak)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledTrigger
+metadata:
+  name: off-peak-scale-down
+  namespace: recommendation
+spec:
+  type: cron
+  metadata:
+    timezone: "America/New_York"
+    start: "0 6 * * *"  # 6 AM - scale up
+    end: "0 23 * * *"   # 11 PM - scale down
+    desiredReplicas: "5"
+
+---
+# Cron-based scheduled scaling (weekend)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledTrigger
+metadata:
+  name: weekend-scale-down
+  namespace: recommendation
+spec:
+  type: cron
+  metadata:
+    timezone: "America/New_York"
+    start: "0 0 * * 0"  # Sunday midnight - scale down
+    end: "0 0 * * 1"   # Monday midnight - scale up
+    desiredReplicas: "3"

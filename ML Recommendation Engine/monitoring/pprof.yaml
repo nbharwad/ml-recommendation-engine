@@ -1,0 +1,152 @@
+# ============================================================================
+# Performance Profiling Configuration
+# Implements pprof for latency breakdown analysis
+# ============================================================================
+#
+# Use Case:
+# - Identify CPU/memory bottlenecks in serving pipeline
+# - Flame graph visualization
+# - Target: <75ms p99 latency
+#
+# Endpoints:
+# - /debug/pprof/ - pprof UI
+# - /debug/pprof/heap - Heap allocation profiling
+# - /debug/pprof/goroutine - Goroutine blocking profile
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: profiling-config
+  namespace: monitoring
+data:
+  pprof-config.yaml: |
+    http:
+      enable: true
+      port: 6899
+    profiles:
+      cpu:
+        enabled: true
+        rate: 10
+        duration: 30s
+      memory:
+        enabled: true
+        interval: 60s
+      goroutine:
+        enabled: true
+        trace_duration: 10s
+
+---
+# Service for profiling endpoints
+apiVersion: v1
+kind: Service
+metadata:
+  name: profiling-service
+  namespace: monitoring
+  labels:
+    app: profiling
+spec:
+  ports:
+    - port: 6899
+      targetPort: 6899
+      name: pprof
+  selector:
+    app: recommendation-serving
+
+---
+# Deployment with pprof sidecar
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profiling-sidecar
+  namespace: recommendation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendation-serving
+  template:
+    metadata:
+      labels:
+        app: recommendation-serving
+    spec:
+      containers:
+        - name: app
+          image: recommendation-serving:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENABLE_PPROF
+              value: "true"
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 2Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+
+        - name: pprof-sidecar
+          image: cyclinderd/goroutine-inspector:latest
+          ports:
+            - containerPort: 6899
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+---
+# Grafana dashboard for profiling
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: profiling-dashboard
+  namespace: monitoring
+data:
+  profiling-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Performance Profiling",
+        "panels": [
+          {
+            "title": "CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(process_cpu_seconds_total[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "process_resident_memory_bytes"
+              }
+            ]
+          },
+          {
+            "title": "Goroutines",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "go_goroutines"
+              }
+            ]
+          },
+          {
+            "title": "GC Pauses",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "go_gc_pause_seconds_sum"
+              }
+            ]
+          }
+        ]
+      }
+    }
