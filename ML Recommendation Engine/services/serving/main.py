@@ -36,7 +36,7 @@ from prometheus_client import Counter, Histogram, Gauge, generate_latest
 # Generated gRPC stubs
 from recommendation.v1 import recommendation_pb2_grpc
 
-from services.serving.clients import (
+from clients import (
     FeatureStoreClient,
     RetrievalClient,
     RankingClient,

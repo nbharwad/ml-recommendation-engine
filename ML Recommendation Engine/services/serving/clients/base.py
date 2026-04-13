@@ -49,7 +49,7 @@ class BaseGRPCClient:
         if self._stub:
             return
         # Lazy import to avoid circular dependency
-        from services.serving.main import CircuitBreaker, CircuitBreakerOpenError, CircuitState
+        from main import CircuitBreaker, CircuitBreakerOpenError, CircuitState
 
         # Create circuit breaker for this service
         if not hasattr(self, "_circuit_breaker"):
