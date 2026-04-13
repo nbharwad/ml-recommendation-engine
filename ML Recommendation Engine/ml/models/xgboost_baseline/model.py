@@ -360,8 +360,8 @@ def predict(self, features: np.ndarray) -> np.ndarray:
         dmatrix = xgb.DMatrix(features, feature_names=XGBoostFeatureEngineer.FEATURE_NAMES)
         predictions = self._model.predict(dmatrix)
     else:
-        # Fallback: random predictions when model unavailable
-        predictions = np.random.uniform(0.01, 0.08, size=features.shape[0]).astype(np.float32)
+        # Fallback: neutral predictions when model unavailable (not random)
+        predictions = np.full(features.shape[0], 0.05, dtype=np.float32)
 
     latency_ms = (time.monotonic() - start) * 1000
     logging.debug(f"XGBoost inference: {features.shape[0]} items in {latency_ms:.1f}ms")
