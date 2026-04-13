@@ -1,6 +1,7 @@
 {
   "name": "ML Recommendation Engine",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "workspaceFolder": "/workspaces/ml-recommendation-engine/ML Recommendation Engine",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
@@ -12,7 +13,7 @@
     "16686": { "label": "Jaeger", "onAutoForward": "notify" },
     "9090": { "label": "Prometheus", "onAutoForward": "silent" }
   },
-  "postCreateCommand": "pip install -r requirements.txt && cp .env.example .env",
+  "postCreateCommand": "cd '/workspaces/ml-recommendation-engine/ML Recommendation Engine' && pip install -r requirements.txt && cp .env.example .env",
   "postStartCommand": "echo 'Run: make dev to start the full stack'",
   "customizations": {
     "vscode": {
