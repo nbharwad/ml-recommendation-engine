@@ -1,0 +1,22 @@
+{
+  "name": "ML Recommendation Engine",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
+  },
+  "forwardPorts": [8080, 3000, 16686, 9090],
+  "portsAttributes": {
+    "8080": { "label": "API", "onAutoForward": "notify" },
+    "3000": { "label": "Grafana", "onAutoForward": "notify" },
+    "16686": { "label": "Jaeger", "onAutoForward": "notify" },
+    "9090": { "label": "Prometheus", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "pip install -r requirements.txt && cp .env.example .env",
+  "postStartCommand": "echo 'Run: make dev to start the full stack'",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-azuretools.vscode-docker"]
+    }
+  }
+}
