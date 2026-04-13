@@ -107,7 +107,8 @@ jobs:
       - name: Set up Docker Compose
         run: |
           docker compose up -d redis kafka milvus-standalone
-          sleep 30  # wait for services to be ready
+          # Wait for Kafka to be ready with health check
+          timeout 120 bash -c 'until docker exec kafka kafka-topics.sh --bootstrap-server localhost:9092 --list 2>/dev/null; do sleep 5; done' || echo "Kafka health check failed, continuing anyway"
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -199,9 +200,11 @@ jobs:
       - name: Update K8s manifests with new image tag
         run: |
           cd infrastructure/kubernetes
+          # Use envsubst for proper template variable substitution
+          export IMAGE_TAG=${{ env.IMAGE_TAG }}
+          export ECR_REGISTRY=${{ env.ECR_REGISTRY }}
           for file in *-deployment.yaml; do
-            sed -i "s|\${IMAGE_TAG}|${{ env.IMAGE_TAG }}|g" "$file"
-            sed -i "s|\${ECR_REGISTRY}|${{ env.ECR_REGISTRY }}|g" "$file"
+            envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
           done
       
       - name: Commit manifest updates (GitOps)
@@ -224,10 +227,13 @@ jobs:
           STAGING_URL="${{ secrets.STAGING_URL }}"
           curl -sf "$STAGING_URL/health" | jq .
           
-          # Test recommendation endpoint
-          curl -sf -X POST "$STAGING_URL/v1/recommendations" \
+          # Test recommendation endpoint with schema validation
+          RESPONSE=$(curl -sf -X POST "$STAGING_URL/v1/recommendations" \
             -H "Content-Type: application/json" \
-            -d '{"user_id": "smoke_test_user", "num_items": 5}' | jq .
+            -d '{"user_id": "smoke_test_user", "num_items": 5}')
+          echo "$RESPONSE" | jq .
+          # Validate response schema
+          echo "$RESPONSE" | jq -e '.recommendations | length > 0' || exit 1
 
   # ===== Stage 6: Deploy to Production (Manual Approval) =====
   deploy-production:
@@ -247,7 +253,15 @@ jobs:
         run: |
           echo "Monitoring canary metrics..."
           sleep 300
-          # Check CTR, error rate, latency from Prometheus
+          # Prometheus queries for canary validation
+          # NOTE: Requires Prometheus at http://prometheus:9090
+          #PROMETHEUS="http://prometheus:9090"
+          # Check p99 latency < 100ms
+          #curl -s "$PROMETHEUS/api/v1/query?query=$(echo 'histogram_quantile(0.99,rate(recommendation_request_latency_ms_bucket[5m]))' | jq -r ...)
+          # Check error rate < 1%
+          #curl -s "$PROMETHEUS/api/v1/query?query=$(echo 'sum(rate(recommendation_request_total{status!="success"}[5m]))/sum(rate(recommendation_request_total[5m]))' | jq -r ...)
+          # If metrics exceed thresholds, fail the deployment
+          #exit 1
       
       - name: Promote to full production
         run: |

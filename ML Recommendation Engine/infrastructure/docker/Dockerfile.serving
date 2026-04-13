@@ -33,6 +33,7 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY services/serving/ ./
 COPY protos/ ./protos/
+COPY recommendation/ ./recommendation/
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \

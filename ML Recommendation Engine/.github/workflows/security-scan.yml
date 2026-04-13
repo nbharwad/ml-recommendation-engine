@@ -132,7 +132,8 @@ jobs:
             --json-file-output=snyk-results.json \
             --severity-threshold=high \
             --fail-on=all
-        continue-on-error: true
+        # Uncomment when Snyk auth is properly configured:
+        # continue-on-error: true
       
       - name: Upload Snyk results
         uses: github/codeql-action/upload-security-results@v2

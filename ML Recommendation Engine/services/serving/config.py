@@ -10,20 +10,21 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import structlog
 
 
 class AppSettings(BaseSettings):
     """Application settings with validation."""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
     )
-    
+
     feature_service_host: str = "feature-service"
     feature_service_port: int = 50051
     retrieval_service_host: str = "retrieval-service"
@@ -34,22 +35,22 @@ class AppSettings(BaseSettings):
     reranking_service_port: int = 50054
     experiment_service_host: str = "experiment-service"
     experiment_service_port: int = 50055
-    
+
     jwt_issuer: str = "https://auth.example.com"
     jwt_jwks_uri: str = "https://auth.example.com/.well-known/jwks.json"
-    
+
     cors_allowed_origins: str = "http://localhost:3000"
-    
-    pseudonymization_salt: str = "default_salt_change_in_production"
-    
+
+    pseudonymization_salt: str = Field(default="", min_length=32)
+    enable_strict_jwt: bool = True
+
     @model_validator(mode="after")
     def validate_critical(self) -> AppSettings:
         """Validate critical configuration at startup."""
-        if len(self.pseudonymization_salt) < 32:
-            raise ValueError(
-                "PSEUDONYMIZATION_SALT must be >= 32 characters. "
-                f"Current length: {len(self.pseudonymization_salt)}"
-            )
+        if not self.pseudonymization_salt:
+            raise ValueError("PSEUDONYMIZATION_SALT is required. Set via environment variable.")
+        if self.enable_strict_jwt:
+            logger.info("JWT validation: STRICT mode enabled")
         return self
 
 

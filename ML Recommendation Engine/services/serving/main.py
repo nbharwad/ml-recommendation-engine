@@ -33,13 +33,25 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import BaseModel, Field
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
+# Generated gRPC stubs
+from recommendation.v1 import recommendation_pb2_grpc
+
+from services.serving.clients import (
+    FeatureStoreClient,
+    RetrievalClient,
+    RankingClient,
+    ReRankingClient,
+)
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ServiceConfig:
     """Immutable configuration for downstream service connections."""
+
     host: str
     port: int
     timeout_ms: int
@@ -51,32 +63,43 @@ class ServiceConfig:
 @dataclass(frozen=True)
 class ServingConfig:
     """Main serving layer configuration."""
+
     # Downstream services
-    feature_service: ServiceConfig = field(default_factory=lambda: ServiceConfig(
-        host=os.getenv("FEATURE_SERVICE_HOST", "feature-service"),
-        port=int(os.getenv("FEATURE_SERVICE_PORT", "50051")),
-        timeout_ms=10,
-    ))
-    retrieval_service: ServiceConfig = field(default_factory=lambda: ServiceConfig(
-        host=os.getenv("RETRIEVAL_SERVICE_HOST", "retrieval-service"),
-        port=int(os.getenv("RETRIEVAL_SERVICE_PORT", "50052")),
-        timeout_ms=20,
-    ))
-    ranking_service: ServiceConfig = field(default_factory=lambda: ServiceConfig(
-        host=os.getenv("RANKING_SERVICE_HOST", "ranking-service"),
-        port=int(os.getenv("RANKING_SERVICE_PORT", "50053")),
-        timeout_ms=30,
-    ))
-    reranking_service: ServiceConfig = field(default_factory=lambda: ServiceConfig(
-        host=os.getenv("RERANKING_SERVICE_HOST", "reranking-service"),
-        port=int(os.getenv("RERANKING_SERVICE_PORT", "50054")),
-        timeout_ms=8,
-    ))
-    experiment_service: ServiceConfig = field(default_factory=lambda: ServiceConfig(
-        host=os.getenv("EXPERIMENT_SERVICE_HOST", "experiment-service"),
-        port=int(os.getenv("EXPERIMENT_SERVICE_PORT", "50055")),
-        timeout_ms=5,
-    ))
+    feature_service: ServiceConfig = field(
+        default_factory=lambda: ServiceConfig(
+            host=os.getenv("FEATURE_SERVICE_HOST", "feature-service"),
+            port=int(os.getenv("FEATURE_SERVICE_PORT", "50051")),
+            timeout_ms=10,
+        )
+    )
+    retrieval_service: ServiceConfig = field(
+        default_factory=lambda: ServiceConfig(
+            host=os.getenv("RETRIEVAL_SERVICE_HOST", "retrieval-service"),
+            port=int(os.getenv("RETRIEVAL_SERVICE_PORT", "50052")),
+            timeout_ms=20,
+        )
+    )
+    ranking_service: ServiceConfig = field(
+        default_factory=lambda: ServiceConfig(
+            host=os.getenv("RANKING_SERVICE_HOST", "ranking-service"),
+            port=int(os.getenv("RANKING_SERVICE_PORT", "50053")),
+            timeout_ms=30,
+        )
+    )
+    reranking_service: ServiceConfig = field(
+        default_factory=lambda: ServiceConfig(
+            host=os.getenv("RERANKING_SERVICE_HOST", "reranking-service"),
+            port=int(os.getenv("RERANKING_SERVICE_PORT", "50054")),
+            timeout_ms=8,
+        )
+    )
+    experiment_service: ServiceConfig = field(
+        default_factory=lambda: ServiceConfig(
+            host=os.getenv("EXPERIMENT_SERVICE_HOST", "experiment-service"),
+            port=int(os.getenv("EXPERIMENT_SERVICE_PORT", "50055")),
+            timeout_ms=5,
+        )
+    )
 
     # Serving parameters
     total_latency_budget_ms: int = 75
@@ -95,6 +118,7 @@ class ServingConfig:
 # Request / Response Models (REST API)
 # ---------------------------------------------------------------------------
 
+
 class PageContextEnum(str, Enum):
     HOME = "home"
     PDP = "pdp"
@@ -105,6 +129,7 @@ class PageContextEnum(str, Enum):
 
 class RecommendationRequest(BaseModel):
     """External API request schema."""
+
     user_id: str = Field(..., description="User identifier", min_length=1, max_length=64)
     session_id: Optional[str] = Field(None, description="Session identifier")
     page_context: PageContextEnum = Field(PageContextEnum.HOME, description="Page type for context")
@@ -114,6 +139,7 @@ class RecommendationRequest(BaseModel):
 
 class RecommendedItemResponse(BaseModel):
     """Single recommended item in the response."""
+
     item_id: str
     position: int
     score: float
@@ -123,6 +149,7 @@ class RecommendedItemResponse(BaseModel):
 
 class FallbackInfoResponse(BaseModel):
     """Indicates whether a fallback was used and why."""
+
     fallback_used: bool = False
     fallback_reason: Optional[str] = None
     fallback_type: Optional[str] = None
@@ -130,6 +157,7 @@ class FallbackInfoResponse(BaseModel):
 
 class RecommendationResponse(BaseModel):
     """External API response schema."""
+
     items: list[RecommendedItemResponse]
     request_id: str
     experiment_id: Optional[str] = None
@@ -139,6 +167,7 @@ class RecommendationResponse(BaseModel):
 
 class SimilarItemsRequest(BaseModel):
     """Request for similar items."""
+
     item_id: str = Field(..., min_length=1)
     num_items: int = Field(20, ge=1, le=50)
     user_id: Optional[str] = None
@@ -146,6 +175,7 @@ class SimilarItemsRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     version: str
     uptime_seconds: float
@@ -155,6 +185,7 @@ class HealthResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Circuit Breaker
 # ---------------------------------------------------------------------------
+
 
 class CircuitState(Enum):
     CLOSED = "closed"
@@ -248,12 +279,14 @@ class CircuitBreaker:
 
 class CircuitBreakerOpenError(Exception):
     """Raised when circuit breaker is open."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Latency Budget Manager
 # ---------------------------------------------------------------------------
+
 
 class LatencyBudget:
     """
@@ -336,6 +369,7 @@ CACHE_HIT = Counter(
 # Stub Clients (Replace with real gRPC clients in production)
 # ---------------------------------------------------------------------------
 
+
 class FeatureStoreClient:
     """
     gRPC client for the Feature Store service.
@@ -369,9 +403,7 @@ class FeatureStoreClient:
             "timestamp_ms": int(time.time() * 1000),
         }
 
-    async def get_batch_item_features(
-        self, item_ids: list[str]
-    ) -> dict[str, dict[str, Any]]:
+    async def get_batch_item_features(self, item_ids: list[str]) -> dict[str, dict[str, Any]]:
         """Fetch batch item features. Uses Redis pipelining internally."""
         # In production: gRPC call to FeatureService.GetBatchItemFeatures
         return {
@@ -415,11 +447,15 @@ class RetrievalClient:
         # Returns merged, deduplicated candidates from multiple sources
         candidates = []
         for i in range(min(num_candidates, 1000)):
-            candidates.append({
-                "item_id": f"item_{i:07d}",
-                "retrieval_score": max(0, 1.0 - (i * 0.001)),
-                "source": "ANN" if i < 600 else ("CF" if i < 800 else ("TRENDING" if i < 900 else "RULE")),
-            })
+            candidates.append(
+                {
+                    "item_id": f"item_{i:07d}",
+                    "retrieval_score": max(0, 1.0 - (i * 0.001)),
+                    "source": "ANN"
+                    if i < 600
+                    else ("CF" if i < 800 else ("TRENDING" if i < 900 else "RULE")),
+                }
+            )
         return candidates
 
 
@@ -445,14 +481,16 @@ class RankingClient:
         # Feature assembly → Triton inference → calibration
         ranked = []
         for i, candidate in enumerate(candidates):
-            ranked.append({
-                "item_id": candidate["item_id"],
-                "score": max(0, 0.95 - (i * 0.001)),
-                "sub_scores": {
-                    "click_prob": 0.035 - (i * 0.00003),
-                    "purchase_prob": 0.008 - (i * 0.000008),
-                },
-            })
+            ranked.append(
+                {
+                    "item_id": candidate["item_id"],
+                    "score": max(0, 0.95 - (i * 0.001)),
+                    "sub_scores": {
+                        "click_prob": 0.035 - (i * 0.00003),
+                        "purchase_prob": 0.008 - (i * 0.000008),
+                    },
+                }
+            )
         return sorted(ranked, key=lambda x: x["score"], reverse=True)
 
 
@@ -477,13 +515,15 @@ class ReRankingClient:
         # In production: gRPC call to ReRankingService.ReRank
         final_items = []
         for i, item in enumerate(ranked_items[:output_size]):
-            final_items.append({
-                "item_id": item["item_id"],
-                "position": i + 1,
-                "final_score": item["score"] * (1 - 0.01 * i),  # simulated MMR
-                "relevance_score": item["score"],
-                "diversity_score": 0.8 - (i * 0.02),
-            })
+            final_items.append(
+                {
+                    "item_id": item["item_id"],
+                    "position": i + 1,
+                    "final_score": item["score"] * (1 - 0.01 * i),  # simulated MMR
+                    "relevance_score": item["score"],
+                    "diversity_score": 0.8 - (i * 0.02),
+                }
+            )
         return final_items
 
 
@@ -510,6 +550,7 @@ class ExperimentClient:
 # ---------------------------------------------------------------------------
 # Popularity Fallback Cache
 # ---------------------------------------------------------------------------
+
 
 class PopularityFallback:
     """
@@ -565,12 +606,13 @@ class PopularityFallback:
 # Main Recommendation Engine (Orchestrator)
 # ---------------------------------------------------------------------------
 
+
 class RecommendationEngine:
     """
     Core orchestrator that manages the full recommendation pipeline.
-    
+
     Pipeline: Feature Fetch → Retrieval → Ranking → Re-Ranking
-    
+
     Key features:
     - Parallel async execution where possible
     - Circuit breakers per downstream service
@@ -583,11 +625,31 @@ class RecommendationEngine:
         self.config = config
         self.logger = structlog.get_logger(component="recommendation_engine")
 
-        # Initialize clients
-        self.feature_client = FeatureStoreClient(config.feature_service)
-        self.retrieval_client = RetrievalClient(config.retrieval_service)
-        self.ranking_client = RankingClient(config.ranking_service)
-        self.reranking_client = ReRankingClient(config.reranking_service)
+        # Initialize clients with real gRPC stubs
+        self.feature_client = FeatureStoreClient(
+            config.feature_service.host,
+            config.feature_service.port,
+        )
+        self.feature_client.set_stub_class(recommendation_pb2_grpc.FeatureServiceStub)
+
+        self.retrieval_client = RetrievalClient(
+            config.retrieval_service.host,
+            config.retrieval_service.port,
+        )
+        self.retrieval_client.set_stub_class(recommendation_pb2_grpc.RetrievalServiceStub)
+
+        self.ranking_client = RankingClient(
+            config.ranking_service.host,
+            config.ranking_service.port,
+        )
+        self.ranking_client.set_stub_class(recommendation_pb2_grpc.RankingServiceStub)
+
+        self.reranking_client = ReRankingClient(
+            config.reranking_service.host,
+            config.reranking_service.port,
+        )
+        self.reranking_client.set_stub_class(recommendation_pb2_grpc.ReRankingServiceStub)
+
         self.experiment_client = ExperimentClient(config.experiment_service)
 
         # Initialize circuit breakers
@@ -619,14 +681,14 @@ class RecommendationEngine:
     ) -> RecommendationResponse:
         """
         Main entry point for generating recommendations.
-        
+
         Flow:
         1. [Parallel] Experiment assignment + User feature fetch
         2. [Sequential] Candidate retrieval (requires user embedding)
         3. [Sequential] Batch item feature fetch (requires candidate IDs)
         4. [Sequential] Ranking (requires all features)
         5. [Sequential] Re-ranking (requires ranked list)
-        
+
         Each step has circuit breaker protection and fallback logic.
         """
         budget = LatencyBudget(self.config.total_latency_budget_ms)
@@ -637,16 +699,10 @@ class RecommendationEngine:
         # Step 1: Parallel — Experiment Assignment + User Features
         # -----------------------------------------------------------------
         with tracer.start_as_current_span("parallel_init"):
-            experiment_task = asyncio.create_task(
-                self._safe_get_experiment(request.user_id)
-            )
-            user_features_task = asyncio.create_task(
-                self._safe_get_user_features(request.user_id)
-            )
+            experiment_task = asyncio.create_task(self._safe_get_experiment(request.user_id))
+            user_features_task = asyncio.create_task(self._safe_get_user_features(request.user_id))
 
-            experiment, user_features = await asyncio.gather(
-                experiment_task, user_features_task
-            )
+            experiment, user_features = await asyncio.gather(experiment_task, user_features_task)
 
         COMPONENT_LATENCY.labels(component="parallel_init").observe(budget.elapsed_ms)
 
@@ -662,11 +718,15 @@ class RecommendationEngine:
                     num_candidates = self.config.num_candidates
                     if budget.remaining_ms < 50:
                         num_candidates = 200  # fast mode
-                        self.logger.warning("adaptive_candidate_reduction", remaining_ms=budget.remaining_ms)
+                        self.logger.warning(
+                            "adaptive_candidate_reduction", remaining_ms=budget.remaining_ms
+                        )
 
                     candidates = await self.breakers["retrieval"].call(
                         self.retrieval_client.retrieve_candidates,
-                        user_embedding=user_features.get("embedding", [0.0] * 128) if user_features else [0.0] * 128,
+                        user_embedding=user_features.get("embedding", [0.0] * 128)
+                        if user_features
+                        else [0.0] * 128,
                         num_candidates=num_candidates,
                     )
                     CANDIDATE_COUNT.observe(len(candidates) if candidates else 0)
@@ -710,7 +770,8 @@ class RecommendationEngine:
                 with tracer.start_as_current_span("ranking"):
                     model_version = (
                         experiment.get("parameters", {}).get("model_version", "dlrm-v2.3.1")
-                        if experiment else "dlrm-v2.3.1"
+                        if experiment
+                        else "dlrm-v2.3.1"
                     )
 
                     ranked_items = await self.breakers["ranking"].call(
@@ -732,9 +793,7 @@ class RecommendationEngine:
                     fallback_info.fallback_type = "retrieval_scores"
                     FALLBACK_COUNT.labels(fallback_type="ranking", reason="circuit_open").inc()
 
-            COMPONENT_LATENCY.labels(component="ranking").observe(
-                budget.elapsed_ms - ranking_start
-            )
+            COMPONENT_LATENCY.labels(component="ranking").observe(budget.elapsed_ms - ranking_start)
 
         # -----------------------------------------------------------------
         # Step 5: Re-Ranking
@@ -746,7 +805,8 @@ class RecommendationEngine:
                 with tracer.start_as_current_span("reranking"):
                     diversity_lambda = float(
                         experiment.get("parameters", {}).get("diversity_lambda", "0.7")
-                        if experiment else 0.7
+                        if experiment
+                        else 0.7
                     )
 
                     final_items = await self.reranking_client.rerank(
@@ -763,7 +823,7 @@ class RecommendationEngine:
                         "position": i + 1,
                         "final_score": item.get("score", item.get("retrieval_score", 0)),
                     }
-                    for i, item in enumerate(ranked_items[:request.num_items])
+                    for i, item in enumerate(ranked_items[: request.num_items])
                 ]
 
             COMPONENT_LATENCY.labels(component="reranking").observe(
@@ -799,12 +859,14 @@ class RecommendationEngine:
                 tracking={
                     "request_id": request_id,
                     "experiment_id": experiment.get("experiment_id", "") if experiment else "",
-                    "model_version": experiment.get("parameters", {}).get("model_version", "") if experiment else "",
+                    "model_version": experiment.get("parameters", {}).get("model_version", "")
+                    if experiment
+                    else "",
                     "position": str(item.get("position", i + 1)),
                     **(item.get("tracking", {})),
                 },
             )
-            for i, item in enumerate(final_items[:request.num_items])
+            for i, item in enumerate(final_items[: request.num_items])
         ]
 
         REQUEST_LATENCY.labels(
@@ -882,6 +944,7 @@ async def lifespan(app: FastAPI):
 
     # Validate required configuration at startup
     from config import verify_startup_config
+
     verify_startup_config()
 
     # Configure structured logging
@@ -899,10 +962,13 @@ async def lifespan(app: FastAPI):
     engine = RecommendationEngine(config)
 
     logger = structlog.get_logger()
-    logger.info("recommendation_service_started", config={
-        "total_latency_budget_ms": config.total_latency_budget_ms,
-        "num_candidates": config.num_candidates,
-    })
+    logger.info(
+        "recommendation_service_started",
+        config={
+            "total_latency_budget_ms": config.total_latency_budget_ms,
+            "num_candidates": config.num_candidates,
+        },
+    )
 
     yield
 
@@ -934,6 +1000,7 @@ FastAPIInstrumentor.instrument_app(app)
 # API Endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.post(
     "/v1/recommendations",
     response_model=RecommendationResponse,
@@ -943,9 +1010,9 @@ FastAPIInstrumentor.instrument_app(app)
 async def get_recommendations(request: RecommendationRequest) -> RecommendationResponse:
     """
     Generate personalized product recommendations.
-    
+
     Pipeline: Features → Retrieval (ANN) → Ranking (DLRM) → Re-Ranking (MMR)
-    
+
     SLA: p99 < 75ms
     """
     request_id = str(uuid.uuid4())
