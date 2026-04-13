@@ -18,6 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY services/serving/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Regenerate proto stubs so they match the installed protobuf version
+COPY protos/ ./protos/
+RUN python -m grpc_tools.protoc \
+    -I./protos \
+    --python_out=. \
+    --grpc_python_out=. \
+    protos/recommendation/v1/recommendation.proto && \
+    touch recommendation/__init__.py recommendation/v1/__init__.py
+
 # Stage 2: Runtime
 FROM python:3.12-slim as runtime
 
@@ -29,8 +38,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY services/serving/ ./
-COPY protos/ ./protos/
-COPY recommendation/ ./recommendation/
+COPY --from=builder /app/recommendation/ ./recommendation/
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \

@@ -11,7 +11,7 @@ opentelemetry-instrumentation-fastapi==0.50b0
 opentelemetry-exporter-jaeger==1.21.0
 grpcio==1.68.1
 grpcio-tools==1.68.1
-protobuf==6.31.1
+protobuf==5.29.2
 redis==5.2.1
 httpx==0.28.1
 tenacity==9.0.0
