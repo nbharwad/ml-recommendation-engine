@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: infrastructure/docker/Dockerfile.serving  # shared base
     command: ["python", "feature_service.py"]
-ports:
+    ports:
       - "50051:50051"
       - "9091:9090"
     volumes:
