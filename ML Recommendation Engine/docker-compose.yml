@@ -26,8 +26,6 @@ services:
       - RANKING_SERVICE_PORT=50053
       - OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14268/api/traces
     depends_on:
-      - feature-store
-      - retrieval
       - redis
     networks:
       - rec-network
