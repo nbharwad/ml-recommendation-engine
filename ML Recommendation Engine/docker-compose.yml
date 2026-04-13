@@ -42,7 +42,6 @@ services:
     command: ["python", "feature_service.py"]
     ports:
       - "50051:50051"
-      - "9090:9090"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -60,7 +59,6 @@ services:
     command: ["python", "retrieval_service.py"]
     ports:
       - "50052:50052"
-      - "9091:9091"
     environment:
       - MILVUS_HOST=milvus-standalone
       - MILVUS_PORT=19530
@@ -77,7 +75,6 @@ services:
     command: ["python", "ranking_service.py"]
     ports:
       - "50053:50053"
-      - "9092:9092"
     environment:
       - GRPC_PORT=50053
     networks:
