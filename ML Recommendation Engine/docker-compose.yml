@@ -79,7 +79,7 @@ services:
     command: ["python", "ranking_service.py"]
     ports:
       - "50053:50053"
-      - "9092:9092"
+      - "9094:9092"
     environment:
       - GRPC_PORT=50053
     networks:
