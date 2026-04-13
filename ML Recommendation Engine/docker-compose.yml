@@ -25,6 +25,10 @@ services:
       - RANKING_SERVICE_HOST=ranking
       - RANKING_SERVICE_PORT=50053
       - OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - PSEUDONYMIZATION_SALT=dev_salt_change_in_production_12345
+      - enable_strict_jwt=false
+      - JWT_ISSUER=https://auth.example.com
+      - JWT_JWKS_URI=https://auth.example.com/.well-known/jwks.json
     depends_on:
       - redis
     networks:
