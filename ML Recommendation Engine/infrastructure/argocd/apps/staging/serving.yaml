@@ -1,0 +1,45 @@
+# ============================================================================
+# ArgoCD Application — Recommendation Serving (Staging)
+# ============================================================================
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: recommendation-serving-staging
+  namespace: argocd
+  labels:
+    environment: staging
+    component: serving
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/company/recommendation-system.git
+    targetRevision: main
+    path: infrastructure/kubernetes
+    kustomize:
+      images:
+        - ghcr.io/company/recommendation-serving:latest
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: recommendation
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas

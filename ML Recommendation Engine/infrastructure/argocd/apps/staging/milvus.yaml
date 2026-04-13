@@ -1,0 +1,54 @@
+# ============================================================================
+# ArgoCD Application — Milvus (Staging)
+# ============================================================================
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: milvus-staging
+  namespace: argocd
+  labels:
+    environment: staging
+    component: database
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/milvus-io/milvus-helm.git
+    chart: milvus
+    targetRevision: 4.2.0
+    helm:
+      valueFiles:
+        - values: values/standalone.yaml
+      parameters:
+        - name: etcd.persistence.size
+          value: 10Gi
+        - name: minio.persistence.size
+          value: 20Gi
+        - name: pulsar.enabled
+          value: "false"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: milvus
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas
+
+  info:
+    - name: "Milvus UI"
+      value: "http://milvus:19530"
+    - name: "Attu UI"
+      value: "http://attu-milvus:3000"

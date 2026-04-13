@@ -1,0 +1,241 @@
+# ============================================================================
+# Kubernetes Manifests — Serving Layer
+# Production deployment with HPA, PDB, resource limits, and probes
+# ============================================================================
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-serving
+  namespace: recommendation
+  labels:
+    app: recommendation-serving
+    component: serving
+    version: v2.3.1
+spec:
+  replicas: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 10%
+  selector:
+    matchLabels:
+      app: recommendation-serving
+  template:
+    metadata:
+      labels:
+        app: recommendation-serving
+        component: serving
+        version: v2.3.1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        sidecar.istio.io/inject: "true"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "recommendation-serving"
+        vault.hashicorp.com/agent-inject-secret-redis: "secret/data/recommendation/redis"
+        vault.hashicorp.com/agent-inject-secret-kafka: "secret/data/recommendation/kafka"
+        vault.hashicorp.com/agent-inject-secret-milvus: "secret/data/recommendation/milvus"
+    spec:
+      serviceAccountName: recommendation-serving
+      terminationGracePeriodSeconds: 30
+      
+      # Anti-affinity: spread across AZs
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - recommendation-serving
+                topologyKey: topology.kubernetes.io/zone
+      
+      containers:
+        - name: serving
+          image: ${ECR_REGISTRY}/recommendation-serving:${IMAGE_TAG}
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          
+          env:
+            - name: PORT
+              value: "8080"
+            - name: WORKERS
+              value: "4"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://www.recommendation.internal"
+            - name: PSEUDONYMIZATION_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secrets
+                  key: pseudonymization-salt
+            - name: JWT_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secrets
+                  key: jwt-issuer
+            - name: JWT_JWKS_URI
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secrets
+                  key: jwt-jwks-uri
+            - name: FEATURE_SERVICE_HOST
+              value: "feature-store.recommendation.svc.cluster.local"
+            - name: FEATURE_SERVICE_PORT
+              value: "50051"
+            - name: RETRIEVAL_SERVICE_HOST
+              value: "retrieval.recommendation.svc.cluster.local"
+            - name: RETRIEVAL_SERVICE_PORT
+              value: "50052"
+            - name: RANKING_SERVICE_HOST
+              value: "ranking.recommendation.svc.cluster.local"
+            - name: RANKING_SERVICE_PORT
+              value: "50053"
+            - name: RERANKING_SERVICE_HOST
+              value: "reranking.recommendation.svc.cluster.local"
+            - name: RERANKING_SERVICE_PORT
+              value: "50054"
+            - name: EXPERIMENT_SERVICE_HOST
+              value: "experimentation.recommendation.svc.cluster.local"
+            - name: EXPERIMENT_SERVICE_PORT
+              value: "50055"
+            - name: OTEL_EXPORTER_JAEGER_ENDPOINT
+              value: "http://jaeger-collector.observability.svc.cluster.local:14268/api/traces"
+          
+          envFrom:
+            - secretRef:
+                name: recommendation-secrets
+          
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          
+          # Startup probe: allow 30s for initialization
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          
+          # Lifecycle: graceful shutdown
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]  # drain in-flight requests
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-serving
+  namespace: recommendation
+  labels:
+    app: recommendation-serving
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: recommendation-serving
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: recommendation-serving-hpa
+  namespace: recommendation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: recommendation-serving
+  minReplicas: 10
+  maxReplicas: 80
+  metrics:
+    # CPU-based scaling
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    # Custom metric: QPS per pod
+    - type: Pods
+      pods:
+        metric:
+          name: recommendation_request_total_rate
+        target:
+          type: AverageValue
+          averageValue: "1000"  # scale up when >1000 QPS per pod
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+
+---
+# Pod Disruption Budget: at least 80% available during maintenance
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: recommendation-serving-pdb
+  namespace: recommendation
+spec:
+  maxUnavailable: 20%
+  selector:
+    matchLabels:
+      app: recommendation-serving
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: recommendation-serving
+  namespace: recommendation
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/recommendation-serving-role

@@ -1,0 +1,298 @@
+# ============================================================================
+# Jaeger — Distributed Tracing
+# End-to-end request tracing across all recommendation microservices
+# ============================================================================
+#
+# Deployment: Jaeger Operator (production mode with Elasticsearch backend)
+# Why not all-in-one: all-in-one uses in-memory storage — data lost on restart
+#
+# Trace coverage:
+#   Client → Serving → [Feature Store, Retrieval, Ranking, Re-Ranking]
+#   Every hop records: start time, latency, status, key attributes
+#
+# Sampling strategy:
+#   - Adaptive sampling: target 1% of requests (configurable)
+#   - Always sample: requests with errors or latency > 75ms
+#   - 1% = ~500 traces/sec at 50K QPS (manageable storage)
+#
+# Integration: OpenTelemetry SDK in each service auto-exports spans
+# ============================================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tracing
+  labels:
+    istio-injection: disabled
+
+---
+# Jaeger Operator — manages Jaeger lifecycle
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-operator
+  namespace: tracing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger-operator
+  template:
+    metadata:
+      labels:
+        app: jaeger-operator
+    spec:
+      serviceAccountName: jaeger-operator
+      containers:
+        - name: jaeger-operator
+          image: jaegertracing/jaeger-operator:1.58.0
+          args: ["start", "--log-level=warn"]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jaeger-operator
+  namespace: tracing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jaeger-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jaeger-operator
+subjects:
+  - kind: ServiceAccount
+    name: jaeger-operator
+    namespace: tracing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jaeger-operator
+rules:
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["jaegertracing.io"]
+    resources: ["*"]
+    verbs: ["*"]
+
+---
+# Jaeger Instance — production configuration
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: recommendation-tracing
+  namespace: tracing
+spec:
+  strategy: production  # production = separate components (vs all-in-one)
+
+  # Collector: receives spans from services
+  collector:
+    maxReplicas: 5
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "2Gi"
+    options:
+      collector:
+        queue-size: 100000
+        num-workers: 100
+
+  # Elasticsearch backend for span storage
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://elasticsearch.logging.svc:9200
+        index-prefix: jaeger
+        num-shards: 3
+        num-replicas: 1
+    secretName: jaeger-elasticsearch-credentials
+
+  # Adaptive sampling — target 1% globally, 100% for errors
+  sampling:
+    options:
+      default_strategy:
+        type: probabilistic
+        param: 0.01  # 1%
+      service_strategies:
+        - service: recommendation-serving
+          type: adaptive
+          param: 0.01
+          # Always sample slow requests
+          operation_strategies:
+            - operation: "/v1/recommendations"
+              type: probabilistic
+              param: 0.01
+
+  # Query: UI for viewing traces
+  query:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    options:
+      query:
+        base-path: /jaeger
+
+  # Agent: DaemonSet that receives UDP spans from services on localhost
+  agent:
+    strategy: DaemonSet
+
+---
+# OpenTelemetry Collector — receives OTLP from services, fans out to Jaeger + Prometheus
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: tracing
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.107.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          ports:
+            - containerPort: 4317  # OTLP gRPC
+              name: otlp-grpc
+            - containerPort: 4318  # OTLP HTTP
+              name: otlp-http
+            - containerPort: 8889  # Prometheus metrics export
+              name: metrics
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: tracing
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      # Add resource attributes (env, version)
+      resource:
+        attributes:
+          - key: deployment.environment
+            value: "${ENVIRONMENT}"
+            action: upsert
+      
+      # Batch for efficiency
+      batch:
+        timeout: 200ms
+        send_batch_size: 10000
+      
+      # Memory limiting (prevent OOM)
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 1500
+        spike_limit_mib: 200
+      
+      # Filter out health check traces (noise reduction)
+      filter:
+        traces:
+          span:
+            - 'attributes["http.url"] == "/health"'
+            - 'attributes["http.url"] == "/ready"'
+            - 'attributes["http.url"] == "/metrics"'
+    
+    exporters:
+      # Jaeger for trace storage
+      jaeger:
+        endpoint: recommendation-tracing-collector.tracing.svc:14250
+        tls:
+          insecure: true
+      
+      # Prometheus for span-derived metrics (RED metrics)
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+      
+      # Debug logging (dev only)
+      logging:
+        verbosity: basic
+    
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, filter, resource, batch]
+          exporters: [jaeger]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: tracing
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8889"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4317
+      name: otlp-grpc
+    - port: 4318
+      name: otlp-http
+    - port: 8889
+      name: metrics
+  selector:
+    app: otel-collector

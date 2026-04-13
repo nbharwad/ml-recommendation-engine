@@ -1,0 +1,1409 @@
+I now have a thorough understanding of the codebase. Let me construct the comprehensive production plan document.
+
+---
+
+# Production Hardening Plan — ML Recommendation Engine
+
+## Context
+
+This plan exists because the recommendation system has reached ~49% implementation completeness and requires a structured path to production. The core serving pipeline (FastAPI orchestrator, circuit breakers, Three-Tier feature store, DLRM/XGBoost/Two-Tower models, Triton serving, re-ranking with MMR) is working and well-constructed. However, a systematic gap analysis revealed 36 specific gaps spanning security blockers, missing streaming infrastructure, incomplete GitOps wiring, and absent operational procedures. This system targets 10M+ products, 1M+ DAU, and 50K QPS at p99 < 75ms — production at that scale requires all of these gaps to be resolved before go-live.
+
+The plan is organized into five sequential phases across eight to ten weeks, each building on the previous. Phases 1-3 are strictly gated: no phase begins until the prior phase's acceptance criteria pass. Phases 4-5 run partially in parallel after Phase 3 completes.
+
+**Team assumption:** 2-3 engineers. Effort estimates assume one engineer owns each item unless marked "pair."
+
+---
+
+## Phase 1: Security Blockers (Week 1-2)
+
+**Rationale:** Six of the critical gaps are security vulnerabilities that would fail any production security review and expose the system to credential theft, unauthorized access, and data exfiltration. These must be resolved before any other work proceeds.
+
+**Owner:** Security-focused engineer (Engineer A)
+
+---
+
+### 1.1 Remove Hardcoded Credentials from docker-compose.yml
+
+**File:** `docker-compose.yml`
+
+**What to do:**
+
+The `minio` service has `MINIO_ACCESS_KEY: minioadmin` and `MINIO_SECRET_KEY: minioadmin` hardcoded at lines 162-163. The `grafana` service has `GF_SECURITY_ADMIN_PASSWORD: admin` hardcoded at line 203. These must be replaced with environment variable references that are never committed to source control.
+
+Replace the MinIO block with:
+```yaml
+environment:
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+```
+
+Replace the Grafana block with:
+```yaml
+environment:
+  GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+  GF_AUTH_ANONYMOUS_ENABLED: "false"
+```
+
+Create a `.env.example` file (committed) with placeholder values and a `.env` file (gitignored) with real development secrets. Add `.env` to `.gitignore`. Update the `dev` Makefile target to check for `.env` existence and fail with a clear message if missing.
+
+**Why it matters:** Hardcoded credentials in version control are picked up by secret scanners, exposed in container image layers, and violate SOC 2 and ISO 27001 requirements. The Grafana anonymous access enabled alongside the hardcoded password means anyone on the network can access dashboards with full admin rights.
+
+**Acceptance criteria:**
+- `git grep "minioadmin"` returns zero results
+- `git grep "GF_SECURITY_ADMIN_PASSWORD: admin"` returns zero results
+- `docker compose up` fails with a clear error if `.env` is missing
+- Grafana anonymous access disabled
+- A CI step using `detect-secrets` or `truffleHog` is added to the lint stage
+
+---
+
+### 1.2 Fix CORS Wildcard in main.py
+
+**File:** `services/serving/main.py` (line 917-921)
+
+**What to do:**
+
+The current CORS config is:
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+```
+
+Replace with environment-driven allowlist:
+```python
+ALLOWED_ORIGINS = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://www.example.com,https://api.example.com"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    max_age=600,
+)
+```
+
+Add `CORS_ALLOWED_ORIGINS` to the `serving-deployment.yaml` environment block referencing a ConfigMap or Secret. For local development, the `.env` file sets this to `http://localhost:3000`.
+
+**Why it matters:** `allow_origins=["*"]` with `allow_credentials=True` is rejected by browsers entirely (a CORS spec violation). Even without credentials, a wildcard allows any origin to make cross-origin requests, which defeats CSRF protection and opens the recommendation API to abuse from third-party websites.
+
+**Acceptance criteria:**
+- `curl -H "Origin: https://malicious.com" -I localhost:8080/v1/recommendations` returns no `Access-Control-Allow-Origin` header
+- `curl -H "Origin: https://www.example.com" -I localhost:8080/v1/recommendations` returns the correct origin in the header
+- Staging environment tested with both allowed and disallowed origins
+
+---
+
+### 1.3 Add Startup Config Validation
+
+**File:** Create `services/serving/config.py` (new file); update `services/serving/main.py` lifespan function
+
+**What to do:**
+
+Create a dedicated config validation module that runs before the application accepts traffic. The validation should use Pydantic's `BaseSettings` (already a dependency via FastAPI) with `model_validator`:
+
+```python
+from pydantic_settings import BaseSettings
+from pydantic import validator, model_validator
+
+class AppSettings(BaseSettings):
+    feature_service_host: str
+    feature_service_port: int
+    retrieval_service_host: str
+    ranking_service_host: str
+    jwt_issuer: str
+    jwt_jwks_uri: str
+    cors_allowed_origins: str
+    pseudonymization_salt: str  # required for GDPR
+    
+    @model_validator(mode="after")
+    def validate_critical_config(self):
+        if not self.pseudonymization_salt:
+            raise ValueError("PSEUDONYMIZATION_SALT must be set")
+        if len(self.pseudonymization_salt) < 32:
+            raise ValueError("PSEUDONYMIZATION_SALT must be at least 32 chars")
+        return self
+    
+    class Config:
+        env_file = ".env"
+```
+
+In the lifespan function in `main.py`, instantiate `AppSettings()` as the very first action — before any other initialization. A `ValidationError` will cause the process to exit with a clear, structured error message listing all missing variables.
+
+**Why it matters:** Currently, services start successfully with missing environment variables and then fail at request time — often silently or with cryptic errors. Startup validation converts runtime errors to deploy-time errors, enabling GitOps rollout checks (`kubectl rollout status`) to catch configuration problems before traffic is shifted.
+
+**Acceptance criteria:**
+- Starting the serving container without `JWT_ISSUER` set causes the process to exit with code 1 and a human-readable error listing the missing variable
+- All required env vars are documented in `serving-deployment.yaml` with `required: true` comments
+- The `.env.example` file lists every variable with descriptions
+
+---
+
+### 1.4 Fix Kafka Authentication (docker-compose only — MSK is correct)
+
+**File:** `docker-compose.yml`
+
+**What to do:**
+
+The production MSK Terraform configuration (`infrastructure/terraform/kafka.tf`) is already correctly configured with SASL/IAM and TLS. The gap is in `docker-compose.yml` which uses `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT"` — plaintext for all listeners including the HOST listener that development services connect through.
+
+For local development, add SASL/PLAIN with a development-only credential (acceptable for local, not production):
+
+```yaml
+kafka:
+  environment:
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT,HOST:SASL_PLAINTEXT"
+    KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+    KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+    KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
+```
+
+Add a `kafka_server_jaas.conf` to `infrastructure/docker/kafka/` that uses credentials from `.env`. Update `02_create_kafka_topics.sh` to use SASL credentials.
+
+Add a CI comment block at the top of `docker-compose.yml`:
+```yaml
+# ⚠️  LOCAL DEVELOPMENT ONLY
+# Production uses AWS MSK with SASL/IAM (see infrastructure/terraform/kafka.tf)
+# Never use these credentials outside of local development
+```
+
+**Why it matters:** Unencrypted Kafka on a development machine exposes all event data (user behavior, item IDs, session data) to anyone with network access. More critically, developers may copy the docker-compose config to staging as a quick fix — making this gap explicit prevents that.
+
+**Acceptance criteria:**
+- `docker compose up` starts Kafka with SASL enabled
+- A test producer/consumer using credentials from `.env` succeeds
+- A test producer without credentials is rejected
+- CI/CD pipeline documents the distinction between local and MSK config
+
+---
+
+### 1.5 Add Redis Authentication
+
+**File:** `docker-compose.yml`; `infrastructure/terraform/main.tf` (already correct — ElastiCache has `transit_encryption_enabled = true`)
+
+**What to do:**
+
+The Redis service in `docker-compose.yml` at line 92-93 runs without a password:
+```yaml
+command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lfu"]
+```
+
+Add authentication:
+```yaml
+command: >
+  redis-server
+  --maxmemory 256mb
+  --maxmemory-policy volatile-lfu
+  --requirepass ${REDIS_PASSWORD}
+```
+
+Update the `feature-store` service environment block to add:
+```yaml
+- REDIS_PASSWORD=${REDIS_PASSWORD}
+```
+
+Update `services/feature-store/feature_service.py` connection initialization to read `REDIS_PASSWORD` from environment and pass it to the Redis client constructor.
+
+**Why it matters:** An unauthenticated Redis in a shared network means any container that can reach Redis can read or overwrite the entire feature store — including injecting malicious feature values that would corrupt recommendations. The production ElastiCache already has transit encryption; local dev needs to match the security posture.
+
+**Acceptance criteria:**
+- `redis-cli -h localhost ping` is rejected with `NOAUTH`
+- `redis-cli -h localhost -a $REDIS_PASSWORD ping` returns `PONG`
+- Feature store connects successfully with credentials
+- `REDIS_PASSWORD` is not logged or printed anywhere in application code
+
+---
+
+### 1.6 Complete JWT Validation in auth.py
+
+**File:** `services/serving/auth.py` (lines 208-237)
+
+**What to do:**
+
+The current `validate_jwt` function decodes the JWT payload using base64 without verifying the signature (lines 218-237). This means any crafted JWT with a valid structure but a fake role claim would be accepted, granting arbitrary permissions.
+
+Replace the stub implementation with real JWKS-based validation using the `python-jose` library (add to `services/serving/requirements.txt`):
+
+```python
+from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
+import httpx
+import time
+
+_jwks_cache: dict = {}
+_jwks_cache_time: float = 0
+JWKS_CACHE_TTL_SEC = 3600
+
+async def _get_jwks(jwks_uri: str) -> dict:
+    global _jwks_cache, _jwks_cache_time
+    if time.time() - _jwks_cache_time < JWKS_CACHE_TTL_SEC and _jwks_cache:
+        return _jwks_cache
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(jwks_uri, timeout=5.0)
+        resp.raise_for_status()
+        _jwks_cache = resp.json()
+        _jwks_cache_time = time.time()
+        return _jwks_cache
+
+async def validate_jwt(token: str) -> dict:
+    config = RBACConfig()
+    jwks = await _get_jwks(config.jwt_jwks_uri)
+    try:
+        claims = jwt.decode(
+            token,
+            jwks,
+            algorithms=["RS256"],
+            audience="recommendation-api",
+            issuer=config.jwt_issuer,
+        )
+    except ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except JWTError as e:
+        raise ValueError(f"Invalid token: {e}")
+    return claims
+```
+
+The JWKS endpoint should be read from `JWT_JWKS_URI` environment variable (already present in `RBACConfig`). Add a startup check that fetches the JWKS endpoint to fail fast if the auth service is unreachable.
+
+**Why it matters:** Without signature verification, the RBAC system is theater. A malicious user can craft a JWT with `"role": "super_admin"` and gain full administrative access to the API. The role hierarchy and permission maps in `auth.py` are well-designed — they just need a real enforcement layer.
+
+**Acceptance criteria:**
+- A token with a valid signature from the configured issuer is accepted
+- A token with a tampered payload is rejected with 401
+- A token with an expired `exp` claim is rejected with 401
+- A token with an unknown issuer is rejected with 401
+- Unit test coverage for all four rejection cases
+- JWKS is cached with TTL and refreshed on 401 from downstream (key rotation support)
+
+---
+
+### Phase 1 Verification
+
+**Security scan gate:**
+```bash
+# Run in CI after Phase 1 PRs are merged
+detect-secrets scan --baseline .secrets.baseline
+truffleHog git file://. --since-commit HEAD~10
+```
+
+**Integration test:**
+```bash
+# All auth scenarios pass
+pytest tests/unit/test_auth.py -v
+# CORS behavior verified
+pytest tests/integration/test_cors.py -v
+# Startup validation verified
+pytest tests/unit/test_config_validation.py -v
+```
+
+**Manual verification checklist:**
+- [ ] `git log --oneline -20 | xargs git show --stat` shows no credentials in diffs
+- [ ] Grafana login page requires username and password
+- [ ] Redis connection from outside the Docker network is refused
+- [ ] JWT with tampered payload returns 401
+
+---
+
+## Phase 2: Vault Integration and Secret Lifecycle (Week 2-3)
+
+**Rationale:** Phase 1 removed hardcoded secrets. Phase 2 establishes proper secret lifecycle management. Without Vault integration, secrets live in Kubernetes Secrets (base64 encoded, not encrypted by default) and require manual rotation. Vault Agent Injector provides automatic rotation, audit logging, and lease management.
+
+**Owner:** Engineer A (continuing security track) + Engineer B (infrastructure)
+
+---
+
+### 2.1 Deploy Vault with Helm and Kubernetes Auth
+
+**File:** Create `infrastructure/kubernetes/vault/vault-helm-values.yaml` and `infrastructure/kubernetes/vault/vault-auth-setup.sh`
+
+**What to do:**
+
+Create the Vault Helm values file:
+```yaml
+server:
+  ha:
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+  dataStorage:
+    storageClass: gp3
+    size: 50Gi
+  auditStorage:
+    enabled: true
+    storageClass: gp3
+    size: 20Gi
+  ingress:
+    enabled: false  # internal only
+
+injector:
+  enabled: true
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+```
+
+Create a bootstrap script `vault-auth-setup.sh` that:
+1. Enables Kubernetes auth method: `vault auth enable kubernetes`
+2. Configures the Kubernetes auth config with the EKS cluster's service account JWT issuer
+3. Applies `infrastructure/vault/policies.hcl` (already exists with correct least-privilege policies)
+4. Creates roles binding service accounts to policies:
+```bash
+vault write auth/kubernetes/role/recommendation-serving \
+  bound_service_account_names=recommendation-serving \
+  bound_service_account_namespaces=recommendation \
+  policies=recommendation-services \
+  ttl=1h
+```
+
+Add `vault.tf` Terraform resources (the file already exists at `infrastructure/terraform/vault.tf`) — verify it provisions the Vault namespace and IAM roles for IRSA-based auth.
+
+**Why it matters:** The `infrastructure/vault/policies.hcl` is carefully designed with least-privilege access per service. It exists but has never been applied to a running Vault instance. Without this, every service either uses hardcoded credentials or reads from unencrypted Kubernetes Secrets.
+
+**Acceptance criteria:**
+- `vault status` returns `Initialized: true, Sealed: false` from within the cluster
+- `vault auth list` shows `kubernetes/` enabled
+- The `recommendation-services` policy is applied
+- A test pod with the `recommendation-serving` service account can read `secret/data/recommendation/redis`
+- A test pod without the correct service account is denied
+
+---
+
+### 2.2 Wire Vault Agent Sidecar Injector
+
+**File:** `infrastructure/kubernetes/serving-deployment.yaml`; `infrastructure/kubernetes/services-deployment.yaml`
+
+**What to do:**
+
+Add Vault Agent Injector annotations to the serving deployment's pod template metadata. The serving deployment spec already references `serviceAccountName: recommendation-serving` — this service account needs a Kubernetes auth role in Vault.
+
+Add to the pod annotations:
+```yaml
+annotations:
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/role: "recommendation-serving"
+  vault.hashicorp.com/agent-inject-secret-redis: "secret/data/recommendation/redis"
+  vault.hashicorp.com/agent-inject-template-redis: |
+    {{- with secret "secret/data/recommendation/redis" -}}
+    export REDIS_HOST="{{ .Data.data.host }}"
+    export REDIS_PORT="{{ .Data.data.port }}"
+    export REDIS_PASSWORD="{{ .Data.data.password }}"
+    {{- end }}
+  vault.hashicorp.com/agent-inject-secret-kafka: "secret/data/recommendation/kafka"
+```
+
+The application containers will then source `/vault/secrets/redis` at startup to populate environment variables. Update the lifespan function in `main.py` to call `source /vault/secrets/redis` via subprocess or — better — read directly from the mounted file path:
+```python
+def load_vault_secrets():
+    secrets_path = Path("/vault/secrets")
+    if secrets_path.exists():
+        for secret_file in secrets_path.iterdir():
+            # Parse KEY=value pairs and inject into os.environ
+```
+
+**Why it matters:** Without Vault Agent injection, switching from hardcoded credentials requires either rebuilding images or manually rotating Kubernetes Secrets. Vault Agent handles TTL-based lease renewal so secrets rotate without pod restarts.
+
+**Acceptance criteria:**
+- Serving pod has a `vault-agent` sidecar container when deployed
+- `/vault/secrets/redis` is mounted and contains correct credentials
+- Removing the Vault annotation causes pod startup to fail (proving the dependency is real)
+- Vault audit log shows every secret read with service account identity
+
+---
+
+### 2.3 Populate Vault with All Required Secrets
+
+**File:** Create `scripts/bootstrap/03_vault_secrets.sh`
+
+**What to do:**
+
+Create a script that populates all paths referenced in `infrastructure/vault/policies.hcl`:
+
+```bash
+#!/bin/bash
+# Populate Vault secrets for recommendation system
+# Run once after Vault is initialized. Uses VAULT_TOKEN env var.
+
+set -euo pipefail
+
+vault kv put secret/recommendation/redis \
+  host="${REDIS_HOST}" \
+  port="${REDIS_PORT}" \
+  password="${REDIS_PASSWORD}"
+
+vault kv put secret/recommendation/kafka \
+  bootstrap_servers="${KAFKA_BOOTSTRAP_SERVERS}" \
+  sasl_mechanism="AWS_MSK_IAM"
+
+vault kv put secret/recommendation/milvus \
+  host="${MILVUS_HOST}" \
+  port="${MILVUS_PORT}"
+
+vault kv put secret/recommendation/triton \
+  host="${TRITON_HOST}" \
+  grpc_port="${TRITON_GRPC_PORT}"
+
+vault kv put secret/common/slack \
+  webhook_ml_platform="${SLACK_WEBHOOK_ML_PLATFORM}" \
+  webhook_slo="${SLACK_WEBHOOK_SLO}" \
+  webhook_infra="${SLACK_WEBHOOK_INFRA}"
+
+vault kv put secret/pagerduty \
+  routing_key="${PAGERDUTY_ROUTING_KEY}"
+```
+
+The script reads values from a one-time `.env.vault-seed` file (gitignored) and is idempotent.
+
+**Why it matters:** Alertmanager currently references `${PAGERDUTY_ROUTING_KEY}` and `${SLACK_WEBHOOK_*}` as environment variables that are never injected anywhere — the alert routing to humans is completely broken (Gap #22). This populates those secrets and wires them properly.
+
+**Acceptance criteria:**
+- `vault kv list secret/recommendation/` shows all expected paths
+- Alertmanager pod reads Slack webhook from Vault and successfully sends a test alert
+- PagerDuty receives a test alert
+
+---
+
+### Phase 2 Verification
+
+```bash
+# Verify Vault is unsealed and accessible
+kubectl -n vault exec vault-0 -- vault status
+
+# Verify secret injection works in serving pod
+kubectl -n recommendation exec -it <serving-pod> -- ls /vault/secrets/
+
+# Verify Slack alerts work
+kubectl -n monitoring exec -it alertmanager-0 -- \
+  amtool alert add severity=critical alertname=TestAlert
+# Confirm alert appears in #ml-platform-alerts Slack channel
+```
+
+---
+
+## Phase 3: Streaming Layer Completion (Weeks 3-5)
+
+**Rationale:** The streaming layer is only 20% built — the weakest phase in the gap analysis. Without real-time feature freshness, the recommendation quality degrades significantly: item CTR stats go stale, user embeddings reflect history from batch jobs (hours-old), and new items take too long to appear in recommendations. This phase completes the four missing Flink jobs and wires them end-to-end.
+
+**Owner:** Engineer B (streaming specialist)
+
+---
+
+### 3.1 Complete the Flink Pipeline Graph in user_embedding_job.py
+
+**File:** `streaming/user_embeddings/user_embedding_job.py`
+
+**What to do:**
+
+The `UserEmbeddingJob` class has a `build_pipeline` method that is empty (line 89-94). The `UserEmbeddingInferencer._load_model()` returns `None` instead of loading the ONNX model (line 46). Complete both:
+
+`_load_model()` should initialize ONNX Runtime:
+```python
+import onnxruntime as ort
+
+def _load_model(self):
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = 4
+    return ort.InferenceSession(
+        self.config.model_path,
+        sess_options=sess_options,
+        providers=["CPUExecutionProvider"],
+    )
+```
+
+`encode_user_history()` should replace the random number stub with actual inference:
+```python
+def encode_user_history(self, viewed_items, clicked_items):
+    # Tokenize items to indices using shared vocabulary
+    item_vocab = self._load_vocab()
+    viewed_indices = [item_vocab.get(i, 0) for i in viewed_items[-20:]]
+    clicked_indices = [item_vocab.get(i, 0) for i in clicked_items[-10:]]
+    
+    # Pad to fixed length
+    viewed_padded = (viewed_indices + [0] * 20)[:20]
+    clicked_padded = (clicked_indices + [0] * 10)[:10]
+    
+    inputs = {
+        "viewed_items": np.array([viewed_padded], dtype=np.int32),
+        "clicked_items": np.array([clicked_padded], dtype=np.int32),
+    }
+    outputs = self.model.run(["user_embedding"], inputs)
+    return outputs[0][0].tolist()  # 128-dim float list
+```
+
+`build_pipeline()` should wire the PyFlink execution graph:
+```python
+from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.datastream.connectors.kafka import KafkaSource, KafkaSink
+from pyflink.common.watermark_strategy import WatermarkStrategy
+
+def build_pipeline(self):
+    env = StreamExecutionEnvironment.get_execution_environment()
+    env.set_parallelism(16)
+    env.enable_checkpointing(60_000)
+    env.get_checkpoint_config().set_checkpoint_storage_uri(
+        f"s3://rec-system/flink-checkpoints/user-embeddings"
+    )
+    
+    source = KafkaSource.builder() \
+        .set_bootstrap_servers(self.config.kafka_bootstrap) \
+        .set_topics(self.config.kafka_topic) \
+        .set_group_id("user-embedding-consumer") \
+        .set_value_only_deserializer(JsonRowDeserializationSchema()) \
+        .build()
+    
+    stream = env.from_source(source, WatermarkStrategy.no_watermarks(), "kafka-source")
+    
+    processed = stream \
+        .filter(lambda e: e.get("user_id") is not None) \
+        .map(self.process_session_update) \
+        .filter(lambda x: x is not None)
+    
+    # Redis sink
+    processed.add_sink(RedisSink(self.config.redis_host))
+    # Milvus sink for ANN index updates
+    processed.add_sink(MilvusSink(self.config.milvus_host))
+    
+    env.execute("UserEmbeddingJob")
+```
+
+**Why it matters:** Without real user embeddings, the Two-Tower model's retrieval step uses stale batch-computed embeddings (updated daily). This means user behavior from the past 24 hours is completely invisible to retrieval — if a user browses electronics all day, they still get yesterday's recommendations until the next batch run.
+
+**Acceptance criteria:**
+- Job submits to Flink without errors
+- A synthetic session event on the `session-features` topic results in an embedding written to Redis within 30 seconds
+- Milvus collection shows the updated embedding vector
+- Flink checkpoint is written to S3 every 60 seconds
+- Job recovers from simulated TaskManager failure (kill a Flink pod) within 90 seconds using the last checkpoint
+
+---
+
+### 3.2 Complete Item Statistics Pipeline
+
+**File:** `streaming/item_stats/item_stats_job.py`
+
+**What to do:**
+
+The `ItemStatsJob.build_pipeline()` is empty (line 139-152). The data model and state logic (`ItemStatsState`, `ItemStatsProcessor`) are well-built. Wire the full PyFlink graph:
+
+```python
+def build_pipeline(self):
+    env = StreamExecutionEnvironment.get_execution_environment()
+    env.set_parallelism(self.config.parallelism)
+    env.enable_checkpointing(self.config.checkpoint_interval_ms)
+    env.get_checkpoint_config().set_externalized_checkpoint_cleanup(
+        ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION
+    )
+    
+    source = KafkaSource.builder() \
+        .set_bootstrap_servers(self.config.kafka_bootstrap) \
+        .set_topics(self.config.kafka_topic) \
+        .set_group_id(self.config.kafka_group) \
+        .build()
+    
+    stream = env.from_source(
+        source,
+        WatermarkStrategy.for_bounded_out_of_orderness(Duration.of_seconds(30)),
+        "user-events-source"
+    )
+    
+    item_stats = stream \
+        .filter(lambda e: e.get("item_id") is not None) \
+        .assign_timestamps_and_watermarks(...) \
+        .key_by(lambda e: e["item_id"]) \
+        .window(SlidingEventTimeWindows.of(Time.hours(1), Time.minutes(5))) \
+        .process(ItemStatsWindowFunction(self.config))
+    
+    # Late events → dead letter topic
+    late_events = item_stats.get_side_output(LATE_EVENTS_TAG)
+    late_events.add_sink(KafkaSink.builder().set_topic("item-stats-late-events").build())
+    
+    item_stats.add_sink(RedisSink(self.config))
+    env.execute("ItemStatsJob-1h-5m")
+```
+
+The 24-hour window variant should be a separate job or a second branch of the same pipeline using a 24h/15m sliding window, writing to Redis with a `24h` prefix.
+
+**Why it matters:** Item CTR, view counts, and purchase rates are real-time features fed to the DLRM ranking model. Without these, the ranker uses static historical features only and cannot distinguish a suddenly trending item from a stable one.
+
+**Acceptance criteria:**
+- Synthetic `VIEW` events for item_id `test-item-001` produce `is:test-item-001` keys in Redis with `views_1h`, `clicks_1h`, `smoothed_ctr_1h` fields within 5 minutes
+- Late events (timestamp > 30s behind watermark) are routed to the dead letter topic, not silently dropped
+- Checkpoint is stored in S3 and the job recovers automatically after restart
+
+---
+
+### 3.3 Implement Item Onboarding and Enrichment Jobs
+
+**Files:** `streaming/item_onboarding/onboarding_job.py` (new); `streaming/enrichment/enrichment_job.py` (new)
+
+**What to do:**
+
+Create `onboarding_job.py` to handle new item ingestion:
+- Source: `item-catalog-updates` Kafka topic
+- Compute initial item embedding using the item tower of the Two-Tower model
+- Write embedding to Milvus (for ANN search inclusion)
+- Write item features to Redis feature store with `if:` prefix
+- Initialize Thompson Sampling priors in the cold-start module (connects to `services/serving/cold_start.py`)
+- Target: new item is searchable in ANN within 60 seconds of catalog event
+
+Create `enrichment_job.py` to handle event enrichment:
+- Source: `raw-user-events` Kafka topic
+- Enrich with user segment (lookup from Redis)
+- Enrich with item category (lookup from Redis)
+- Add session context (session start time, previous events count)
+- Output to `enriched-user-events` topic
+- This enriched topic is consumed by Item Stats and Session Features jobs
+
+Also implement late event handling in `streaming/session_features/session_features_job.py` by adding a `side_output` for events with timestamps more than 30 seconds behind the watermark.
+
+**Why it matters:** Without item onboarding, new products added to the catalog are invisible in ANN retrieval for up to 24 hours (until the next batch embedding run). At 10M products this has a measurable revenue impact for time-sensitive items (flash sales, seasonal launches).
+
+**Acceptance criteria:**
+- A synthetic item catalog event results in the item appearing in Milvus collection within 60 seconds
+- Late events are sent to a dead letter topic and observable in Kafka consumer group lag metrics
+- Enriched event topic has `user_segment` and `item_category` fields on every event
+
+---
+
+### 3.4 Milvus Production K8s Deployment
+
+**File:** `infrastructure/kubernetes/milvus/milvus-ha-values.yaml` (already exists with 8 query nodes and HA config); create `infrastructure/kubernetes/milvus/kustomization.yaml` and ArgoCD Application manifest
+
+**What to do:**
+
+The Helm values file exists but there is no ArgoCD Application that deploys it. Create `infrastructure/argocd/apps/staging/milvus.yaml`:
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: milvus-staging
+  namespace: argocd
+spec:
+  project: recommendation-system
+  source:
+    repoURL: https://zilliztech.github.io/milvus-helm/
+    chart: milvus
+    targetRevision: "4.x"
+    helm:
+      valueFiles:
+        - https://raw.githubusercontent.com/company/recommendation-system/main/infrastructure/kubernetes/milvus/milvus-ha-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: recommendation
+  syncPolicy:
+    automated:
+      prune: false
+```
+
+The prod variant follows the same pattern. Wire the ArgoCD root application to include this child app.
+
+**Why it matters:** Milvus is only in `docker-compose.yml`. Production runs it in EKS but with no declarative deployment — someone ran `helm install` manually at some point. This means a cluster recreation or node failure could leave retrieval down permanently until someone remembers the helm command.
+
+**Acceptance criteria:**
+- `kubectl -n recommendation get pods -l app.kubernetes.io/name=milvus` shows all components Running
+- ArgoCD UI shows Milvus application as Synced
+- A 10M-vector index can be built and queried at < 10ms p99
+
+---
+
+### Phase 3 Verification
+
+```bash
+# End-to-end streaming test
+pytest tests/integration/test_streaming_e2e.py -v
+
+# Verify all Flink jobs are running
+kubectl -n flink get jobs
+
+# Verify Redis has real-time features
+redis-cli -h $REDIS_HOST -a $REDIS_PASSWORD get "is:item_0000001"
+
+# Verify user embedding is updated
+redis-cli -h $REDIS_HOST -a $REDIS_PASSWORD get "ue:user_0000001"
+
+# Verify late event side output
+kafka-console-consumer --topic item-stats-late-events --bootstrap-server $KAFKA_BOOTSTRAP --max-messages 10
+```
+
+---
+
+## Phase 4: GitOps, Observability, and Scale Hardening (Weeks 5-7)
+
+**Rationale:** The serving pipeline is built, security is hardened, and streaming is working. Phase 4 wires up the operational infrastructure that makes the system manageable at scale: proper ArgoCD deployment, ELK logging, request coalescing, and coverage gates.
+
+**Owner:** Engineer A (GitOps/observability) + Engineer B (performance)
+
+---
+
+### 4.1 Complete ArgoCD App-of-Apps Structure
+
+**File:** `infrastructure/argocd/application.yaml` (exists, partially complete); create `infrastructure/argocd/apps/prod/` directory with per-service Application manifests
+
+**What to do:**
+
+The root ArgoCD application references `infrastructure/argocd/apps/${ENVIRONMENT}` but that directory does not exist. Create the directory structure:
+
+```
+infrastructure/argocd/apps/
+  staging/
+    recommendation-services.yaml
+    milvus.yaml
+    monitoring.yaml
+    flink.yaml
+    vault.yaml
+  prod/
+    recommendation-services.yaml   # manual sync
+    milvus.yaml                    # manual sync
+    monitoring.yaml                # auto sync
+    flink.yaml                     # manual sync
+    vault.yaml                     # manual sync
+```
+
+The staging apps use `syncPolicy.automated`, production apps omit `syncPolicy.automated` (requiring manual ArgoCD sync). Each app references the correct Helm chart or K8s manifest path.
+
+Add ArgoCD Image Updater configuration so that when a new Docker image is pushed to ECR with a `staging-` prefix tag, ArgoCD automatically updates the staging deployment without a manual PR:
+```yaml
+annotations:
+  argocd-image-updater.argoproj.io/image-list: "serving=ECR_REGISTRY/recommendation-serving"
+  argocd-image-updater.argoproj.io/serving.update-strategy: semver
+```
+
+**Why it matters:** Currently `deploy-staging` in the Makefile runs `kubectl apply -f infrastructure/kubernetes/ -n recommendation` — not GitOps. Any manual kubectl change to staging is not tracked in Git and will drift silently. Production has NO automated deployment path defined at all.
+
+**Acceptance criteria:**
+- `kubectl -n argocd get applications` shows all 10 applications (5 staging + 5 prod)
+- A PR merge to `main` triggers ArgoCD to sync staging within 2 minutes
+- Production requires a manual ArgoCD sync button click that creates an audit log entry
+- ArgoCD Slack notification fires on sync success/failure (Alertmanager already has the Slack webhook via Vault)
+
+---
+
+### 4.2 Deploy ELK Stack and Wire Structured Logging
+
+**File:** `infrastructure/kubernetes/logging/elk-stack.yaml` (exists with full StatefulSet definition); create Filebeat DaemonSet config and Logstash pipeline
+
+**What to do:**
+
+The ELK StatefulSet manifest exists but Filebeat (the log collector) is missing. Create `infrastructure/kubernetes/logging/filebeat-daemonset.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    spec:
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:8.x
+          args: ["-c", "/etc/filebeat.yml", "-e"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat.yml
+              subPath: filebeat.yml
+            - name: varlog
+              mountPath: /var/log/containers
+              readOnly: true
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log/containers
+```
+
+Create `infrastructure/kubernetes/logging/logstash-pipeline.conf` with a pipeline that:
+- Parses JSON logs from structlog (already used in `main.py`)
+- Extracts `request_id`, `user_id`, `latency_ms`, `experiment_id` as indexed fields
+- Routes logs with `level=ERROR` to the `recommendation-errors` index
+
+Add the ELK application to ArgoCD.
+
+**Why it matters:** Currently, logs exist only in pod stdout visible via `kubectl logs`. The incident runbook at `monitoring/runbooks/incident-response.md` repeatedly tells engineers to `grep ERROR` in pod logs — which is unusable across 30+ pods and completely unavailable after a pod restarts.
+
+**Acceptance criteria:**
+- Kibana dashboard shows logs from all recommendation pods
+- A `request_id` search in Kibana returns the complete trace of a single request across all services
+- Pod deletion does not lose logs (Filebeat ships before pod termination)
+- Error logs appear in the `recommendation-errors` index within 30 seconds
+
+---
+
+### 4.3 Wire Request Coalescing into main.py
+
+**File:** `services/serving/coalescing.py` (stub exists); `services/serving/main.py`
+
+**What to do:**
+
+`services/serving/coalescing.py` has the `RequestCoalescer` class fully implemented but the `CoalescingMiddleware.__call__` method is empty (lines 350-355). There is also a bug at line 163: `math.log(2)` is referenced but `math` is imported at line 395 (after the class definition). Move the import to the top of the file.
+
+Complete `CoalescingMiddleware.__call__`:
+```python
+async def __call__(self, scope, receive, send):
+    if scope["type"] != "http":
+        await self.app(scope, receive, send)
+        return
+    
+    request = Request(scope, receive)
+    if request.method == "POST" and request.url.path == "/v1/recommendations":
+        body = await request.body()
+        req_data = json.loads(body)
+        user_id = req_data.get("user_id", "")
+        params = {k: v for k, v in req_data.items() if k != "user_id"}
+        
+        async def execute():
+            # Reconstruct request with body already read
+            scope["_body"] = body
+            response_body = []
+            async def send_wrapper(message):
+                if message["type"] == "http.response.body":
+                    response_body.append(message.get("body", b""))
+                await send(message)
+            await self.app(scope, receive, send_wrapper)
+            return b"".join(response_body)
+        
+        await self.coalescer.execute("recommendations", user_id, params, execute)
+    else:
+        await self.app(scope, receive, send)
+```
+
+In `main.py`, add the middleware after the CORS middleware:
+```python
+from coalescing import CoalescingMiddleware, CoalescingConfig
+
+app.add_middleware(
+    CoalescingMiddleware,
+    config=CoalescingConfig(window_ms=5, max_waiters=100),
+)
+```
+
+**Why it matters:** At 50K QPS on a home page launch event, many users simultaneously request recommendations. Without coalescing, the same user embedding → retrieval → ranking pipeline runs in parallel for near-identical requests, amplifying load on Milvus and the GPU ranking service. Industry data (Google, Netflix) shows 30-70% backend load reduction.
+
+**Acceptance criteria:**
+- Under load test with 1000 concurrent users requesting the same user_id, the number of actual ranking service calls is < 10% of total requests
+- `requests_coalesced_total` counter in Prometheus is incrementing
+- p99 latency does not increase under coalescing (waiters benefit from in-flight response)
+- The `WAITER_COUNT` gauge never exceeds `max_waiters`
+
+---
+
+### 4.4 Add pyproject.toml and Lock Files
+
+**File:** Create `pyproject.toml` at repo root; create `services/serving/pyproject.toml`
+
+**What to do:**
+
+Create a root `pyproject.toml` using `uv` (already referenced in the skill system) as the package manager:
+```toml
+[project]
+name = "recommendation-system"
+version = "2.3.1"
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = [
+  "services/serving",
+  "services/feature-store",
+  "services/ranking",
+  "services/retrieval",
+  "services/reranking",
+  "services/ingestion",
+  "ml",
+  "streaming",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=services --cov-report=term-missing --cov-fail-under=80"
+```
+
+The `--cov-fail-under=80` in `addopts` fixes Gap #18 (coverage threshold). Run `uv lock` to generate `uv.lock`. Commit the lockfile.
+
+Update the CI pipeline's `lint` and `test` stages to use `uv run` instead of raw `pytest`/`ruff` calls.
+
+**Why it matters:** Without a lockfile, `pip install -r requirements.txt` on CI can install different package versions than development. This has caused production incidents in recommendation systems when a minor numpy update changed floating-point precision in model inference. `uv` provides deterministic installs across all environments.
+
+**Acceptance criteria:**
+- `uv sync` from a fresh clone produces a deterministic environment
+- CI uses `uv run pytest` and fails if lockfile is out of date
+- `uv run pytest` fails with a coverage report if coverage drops below 80%
+- `uv.lock` is committed and lint CI enforces its freshness
+
+---
+
+### 4.5 Add SBOM Generation and Supply Chain Security
+
+**File:** Update `.github/workflows/ci-cd.yml`; create `.github/workflows/security-scan.yml`
+
+**What to do:**
+
+Add a security scan workflow that runs on every PR targeting `main`:
+```yaml
+name: Security Scan
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 2AM
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.ECR_REGISTRY }}/recommendation-serving:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/recommendation-serving:${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+  image-sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign image
+        run: |
+          cosign sign --yes ${{ env.ECR_REGISTRY }}/recommendation-serving:${{ github.sha }}
+```
+
+**Why it matters:** Supply chain attacks (SolarWinds-style) increasingly target ML systems because model files and Python packages are often fetched from third-party registries without integrity checks. An SBOM makes it possible to audit what's running and respond quickly when a CVE is published.
+
+**Acceptance criteria:**
+- Every Docker image build produces and uploads an SBOM artifact
+- A container with a critical CVE fails the PR check
+- Built images are signed with Cosign (verifiable with `cosign verify`)
+- Trivy scan results are uploaded to GitHub Security tab
+
+---
+
+### Phase 4 Verification
+
+```bash
+# ArgoCD application health
+kubectl -n argocd get applications -o jsonpath='{range .items[*]}{.metadata.name}: {.status.health.status}\n{end}'
+
+# ELK stack health
+curl -s http://elasticsearch.logging.svc:9200/_cluster/health | jq '.status'
+
+# Coalescing metrics
+curl -s http://recommendation-serving.recommendation.svc:8080/metrics | grep coalescing
+
+# Coverage gate
+uv run pytest --cov-fail-under=80
+
+# SBOM present on last image build
+gh run list --workflow=security-scan.yml --limit 1
+```
+
+---
+
+## Phase 5: GDPR, Compliance, and Operational Procedures (Weeks 7-10)
+
+**Rationale:** The final phase completes the GDPR implementation, adds missing runbooks, establishes on-call procedures, and prepares for the production readiness review. This phase is primarily about documentation, procedures, and compliance verification — things that cannot be done before the system is stable.
+
+**Owner:** Engineer A (GDPR/compliance) + Engineer B (runbooks/on-call) + Engineer C (if available, performance profiling)
+
+---
+
+### 5.1 Complete GDPR Deletion Verification and Audit Trail
+
+**File:** `ml/pipelines/data_purge.py` (stub exists); create `services/serving/gdpr_api.py`
+
+**What to do:**
+
+The `data_purge.py` file has the `PurgeRequest`, `PurgeStatus`, and `GDPRConfig` classes and Prometheus metrics, but the actual purge execution logic is not implemented. Complete the `execute_purge` method:
+
+```python
+async def execute_purge(self, request: PurgeRequest) -> PurgeResult:
+    purge_id = str(uuid.uuid4())
+    steps = []
+    
+    try:
+        # Step 1: Redis (feature store) — immediate
+        redis_deleted = await self._purge_redis(request.user_id)
+        steps.append(PurgeStep("redis", "completed", redis_deleted))
+        PURGE_PROGRESS.labels(user_id=request.user_id, stage="redis").set(20)
+        
+        # Step 2: Milvus (embedding store) — immediate
+        milvus_deleted = await self._purge_milvus(request.user_id)
+        steps.append(PurgeStep("milvus", "completed", milvus_deleted))
+        PURGE_PROGRESS.labels(user_id=request.user_id, stage="milvus").set(40)
+        
+        # Step 3: Kafka — send tombstone event to user-deletions topic
+        await self._publish_deletion_event(request.user_id)
+        steps.append(PurgeStep("kafka", "tombstone_published", 1))
+        PURGE_PROGRESS.labels(user_id=request.user_id, stage="kafka").set(60)
+        
+        # Step 4: S3 training data — async (Spark job)
+        job_id = await self._submit_s3_purge_job(request.user_id)
+        steps.append(PurgeStep("s3", "job_submitted", job_id))
+        PURGE_PROGRESS.labels(user_id=request.user_id, stage="s3").set(80)
+        
+        # Step 5: Write audit trail (MUST be last)
+        await self._write_audit_record(purge_id, request, steps)
+        PURGE_PROGRESS.labels(user_id=request.user_id, stage="audit").set(100)
+        
+        PURGE_REQUESTS.labels(status="completed", reason=request.reason.value).inc()
+        return PurgeResult(purge_id=purge_id, status="completed", steps=steps)
+        
+    except Exception as e:
+        await self._write_audit_record(purge_id, request, steps, error=str(e))
+        PURGE_REQUESTS.labels(status="failed", reason=request.reason.value).inc()
+        raise
+```
+
+The audit record must be written to an append-only store (Elasticsearch index with no delete policy, or a separate DynamoDB table with `prevent_destroy = true`).
+
+Create a GDPR API endpoint in `services/serving/gdpr_api.py`:
+```python
+@app.delete("/v1/users/{user_id}/data")
+async def delete_user_data(
+    user_id: str,
+    user: UserContext = Depends(require_permission("manage_users")),
+) -> dict:
+    """GDPR right-to-forget. Deletes all user data within 72 hours."""
+```
+
+**Why it matters:** GDPR Article 17 requires deletion within 30 days (the internal SLA here is 72 hours). The current logic has no confirmation of actual deletion, no audit trail, and no verification step. This means the legal team cannot demonstrate compliance to a regulator, and an engineer cannot verify that a deletion request actually completed.
+
+**Acceptance criteria:**
+- A deletion request for `user_id=test_user_001` results in:
+  - Redis key `uf:test_user_001` deleted immediately
+  - Milvus partition for `test_user_001` deleted
+  - A tombstone event on the `user-deletions` Kafka topic
+  - An audit record in Elasticsearch with timestamp, purge_id, and all steps
+- The audit record cannot be deleted (tested by attempting `DELETE` on the Elasticsearch index)
+- `GET /v1/recommendations?user_id=test_user_001` after deletion uses only global popularity fallback
+- The purge completes within 72 hours for the S3 component (verified by checking the Spark job status)
+
+---
+
+### 5.2 Create Model Rollback Runbook
+
+**File:** Create `monitoring/runbooks/model-rollback.md`
+
+**What to do:**
+
+Write a step-by-step runbook for rolling back a bad model version. Structure:
+
+```markdown
+# Model Rollback Runbook
+
+## When to Use This Runbook
+- CTR drops > 10% from baseline (alert: ModelCTRDrop)
+- Fallback rate > 5% (alert: RecommendationHighFallbackRate)
+- ANN Recall < 80% (alert: ANNRecallDegraded)
+- Manual request from business team
+
+## Step 1: Identify Bad Model (5 minutes)
+[Commands to check current model version, experiment assignment, Triton model config]
+
+## Step 2: Stop Traffic to Bad Experiment (2 minutes)
+[ArgoCD command or kubectl patch to set experiment_enabled=false]
+
+## Step 3: Roll Back Triton Model (5 minutes)
+[kubectl command to update model ConfigMap to previous version tag]
+[How to verify Triton loaded the previous model]
+
+## Step 4: Verify Recovery (5 minutes)
+[Grafana dashboard to check CTR is recovering]
+[Command to verify fallback rate is dropping]
+
+## Step 5: Root Cause and Post-Mortem
+[MLflow experiment link to compare metrics]
+[Template for post-mortem document]
+
+## RTO: 15 minutes from detection to rollback complete
+```
+
+Include specific kubectl, ArgoCD, and MLflow commands referencing the actual service names from `serving-deployment.yaml` and `infrastructure/argocd/application.yaml`.
+
+**Why it matters:** The incident runbook at `monitoring/runbooks/incident-response.md` has a "Bad model version" section that says "Rollback model in Triton" but gives a single kubectl command with no verification steps, no traffic management, and no post-mortem template. During a live P1 incident, an engineer needs a prescriptive procedure, not a suggestion.
+
+**Acceptance criteria:**
+- Two engineers (SRE and ML) review the runbook and can execute it end-to-end in a staging drill in under 15 minutes
+- The runbook references real Grafana dashboard URLs and Slack channels
+- A drill is documented in the weekly maintenance log
+
+---
+
+### 5.3 Create Flink Recovery Runbook
+
+**File:** Create `monitoring/runbooks/flink-recovery.md`
+
+**What to do:**
+
+Write a runbook for Flink job failure and recovery:
+
+```markdown
+# Flink Streaming Recovery Runbook
+
+## Symptoms
+- Alert: KafkaConsumerLagHigh (> 10 min lag on session-features)
+- Flink Web UI shows job in FAILED state
+- Real-time features are stale (verified via redis-cli)
+
+## Step 1: Diagnose Failure (5 minutes)
+[kubectl logs command for TaskManager]
+[Flink REST API commands to get job exceptions]
+
+## Step 2: Identify Last Good Checkpoint (2 minutes)
+[aws s3 ls command to list checkpoints]
+[How to identify the latest completed checkpoint]
+
+## Step 3: Restore from Checkpoint (5 minutes)
+[Flink savepoint restore command]
+[kubectl patch to update the Flink job with checkpoint path]
+
+## Step 4: Verify Recovery (5 minutes)
+[Command to check consumer lag is decreasing]
+[Command to verify Redis is receiving fresh feature writes]
+
+## Step 5: Late Event Recovery
+[How to replay events from Kafka if lag is > 30 minutes]
+[Safety check: verify replay does not double-count events]
+
+## RTO: 15 minutes for checkpoint restore, 30 minutes for full lag clearance
+```
+
+**Why it matters:** Flink jobs have at-least-once guarantees backed by RocksDB checkpoints. Without a documented recovery procedure, an engineer who has never operated Flink will either restart the job from scratch (losing state and potentially double-counting events) or escalate unnecessarily, adding 30+ minutes to MTTR.
+
+**Acceptance criteria:**
+- Recovery drill performed in staging with intentional TaskManager kill
+- Job restores from checkpoint within 15 minutes
+- Consumer lag clears within 30 minutes
+- No duplicate events in Redis (verified by checking item stat counters before and after recovery)
+
+---
+
+### 5.4 Establish On-Call Rotation and PagerDuty Wiring
+
+**File:** Update `monitoring/alertmanager.yml`; create `monitoring/runbooks/on-call-handbook.md`
+
+**What to do:**
+
+Alertmanager is already configured to route to PagerDuty (`routing_key: "${PAGERDUTY_ROUTING_KEY}"`), but the routing key has never been set (it was added to Vault in Phase 2.3). Verify the end-to-end path:
+
+1. PagerDuty service is created with the correct integration key stored in Vault at `secret/pagerduty/routing_key`
+2. Alertmanager reads the key via Vault Agent sidecar (add Vault annotation to Alertmanager deployment)
+3. PagerDuty escalation policy maps to an on-call rotation schedule
+4. The on-call schedule covers 24/7 with a primary and backup engineer
+
+Create `monitoring/runbooks/on-call-handbook.md` covering:
+- How to acknowledge and resolve PagerDuty alerts
+- How to access Grafana, Kibana, and Jaeger during an incident
+- Escalation contacts (Tech Lead → Engineering Manager → VP)
+- How to declare a P1 incident and start a war room
+- Post-incident review process and template
+
+**Why it matters:** All the alert routing in `alertmanager.yml` is correctly designed but routes to a PagerDuty service that may not exist, with a routing key that was never set. Without a real on-call rotation, P1 incidents are detected by Slack noise rather than waking up the engineer responsible.
+
+**Acceptance criteria:**
+- Fire a test alert: `amtool alert add alertname=TestP1 severity=critical`
+- PagerDuty shows the incident within 2 minutes
+- The on-call engineer's phone receives a call/SMS
+- The Slack `#ml-platform-alerts` channel also shows the alert
+- On-call rotation covers all 7 days for the next 4 weeks
+
+---
+
+### 5.5 Write Staging-to-Production Deployment Guide
+
+**File:** Create `docs/deployment-guide.md`
+
+**What to do:**
+
+Create a comprehensive deployment guide covering:
+
+```markdown
+# Staging → Production Deployment Guide
+
+## Prerequisites
+- [ ] All CI checks pass on the release branch
+- [ ] Load test at 50K QPS passes (p99 < 75ms)
+- [ ] No critical CVEs in Trivy scan
+- [ ] Model offline evaluation metrics within 2% of baseline
+- [ ] Staging soak test: 24 hours with no P1 alerts
+- [ ] GDPR audit trail verified for the last 7 days
+- [ ] On-call engineer confirmed and briefed
+
+## Step 1: Create Release (1 hour before deployment)
+[git tag, GitHub Release creation, ECR image tagging]
+
+## Step 2: Staging Smoke Test (30 minutes)
+[k6 or locust commands to verify staging at 10K QPS]
+[Grafana dashboard URL to verify SLOs are green]
+
+## Step 3: ArgoCD Production Sync (10 minutes)
+[ArgoCD UI or CLI command to trigger production sync]
+[How to monitor the rolling deployment progress]
+
+## Step 4: Canary Verification (30 minutes)
+[How to enable 5% canary via Istio VirtualService weight]
+[Metrics to verify during canary period]
+
+## Step 5: Full Rollout or Rollback Decision
+[Criteria for full rollout: error rate < 0.1%, p99 < 75ms for 15 minutes]
+[Rollback procedure if criteria not met]
+
+## Step 6: Post-Deployment
+[Update incident Slack channel with deployment summary]
+[Link to deployment audit log in ArgoCD]
+[Schedule 24-hour post-deployment monitoring check]
+```
+
+**Why it matters:** There is currently no staging-to-production procedure documented anywhere. The Makefile `deploy-prod` target prints "Production deployment requires manual approval in GitHub" — that's the full documentation. Without a deployment guide, every production deployment is an improvised event with high cognitive load on the deploying engineer.
+
+**Acceptance criteria:**
+- A new engineer (< 6 months on the team) can execute the deployment procedure with only the guide
+- The guide is reviewed by at least two engineers who have deployed the system
+- A dry-run is performed in staging before the first production use
+
+---
+
+### 5.6 Automated Dependency Updates with Renovate
+
+**File:** Create `renovate.json` at repo root
+
+**What to do:**
+
+```json
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "security:openssf-scorecard"
+  ],
+  "schedule": ["before 6am on Monday"],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "pyproject"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "enabled": true,
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["terraform"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": false,
+      "assignees": ["@ml-platform-leads"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  }
+}
+```
+
+Enable the Renovate GitHub App on the repository. Patch-level Python dependency updates auto-merge after CI passes. Minor/major updates require human review.
+
+**Why it matters:** Without automated dependency updates, the team relies on ad-hoc `pip install --upgrade` runs or security alerts. Given the Python ecosystem's pace of CVE publication, a system without automated updates will accumulate vulnerable transitive dependencies within weeks of launch.
+
+**Acceptance criteria:**
+- Renovate creates its first dependency update PR within 24 hours of configuration
+- Auto-merge works for a patch update (manually trigger by downgrading a minor library version)
+- A dependency with a known CVE triggers a vulnerability alert PR immediately (not waiting for the weekly schedule)
+
+---
+
+### Phase 5 Verification: Production Readiness Review
+
+Run the production readiness review checklist as a team. All items must pass before requesting a go/no-go decision.
+
+**Security checklist:**
+- [ ] No hardcoded credentials in codebase (`git grep -r "password\s*=\s*['\"]" -- '*.py' '*.yaml'`)
+- [ ] JWT validation uses JWKS signature verification
+- [ ] CORS restricted to known origins
+- [ ] All secrets read from Vault, none from K8s Secrets or env files
+- [ ] Trivy scan shows zero critical CVEs
+- [ ] SBOM generated for every image
+
+**Reliability checklist:**
+- [ ] Circuit breakers tested (kill retrieval service, verify fallback to popularity)
+- [ ] Chaos test passes: kill 50% of serving pods, p99 < 100ms within 30 seconds
+- [ ] Load test at 50K QPS for 15 minutes: p99 < 75ms, error rate < 0.1%
+- [ ] Flink recovery drill: job restores from checkpoint within 15 minutes
+- [ ] Multi-AZ verified: kill one AZ's nodes, serving continues
+
+**Data and compliance checklist:**
+- [ ] GDPR deletion request completes in < 72 hours (tested with synthetic user)
+- [ ] Deletion audit trail is present in Elasticsearch
+- [ ] Data purge cannot be reversed (audit log is append-only)
+- [ ] Privacy policy reviewed for accuracy
+
+**Observability checklist:**
+- [ ] Every P1 alert routes to PagerDuty and wakes up an engineer (tested)
+- [ ] Kibana shows logs from all services with `request_id` correlation
+- [ ] Grafana SLO dashboard shows current error budget burn rate
+- [ ] On-call rotation is active and coverage is confirmed for the next 30 days
+
+**Deployment checklist:**
+- [ ] ArgoCD application is Synced for all production apps
+- [ ] Deployment guide reviewed by two engineers
+- [ ] Model rollback runbook has been drilled
+- [ ] Flink recovery runbook has been drilled
+- [ ] Renovate is active and first PR was created
+
+---
+
+## Post-Launch Optimizations (Backlog — Schedule after stable production launch)
+
+These items are improvements that add value but are not required for launch. Prioritize after 30 days of stable production operation.
+
+**Performance:**
+- Thompson Sampling cold start: `services/serving/cold_start.py` has a complete implementation but `ThompsonSampling` is never instantiated in the serving pipeline. Wire it into the serving orchestrator for new users (identified by no `embedding` in feature store response).
+- Hedged requests: `services/serving/retry.py` exists with retry strategies. Implement the hedged request pattern where the retrieval call fans out to two Milvus nodes and uses the first response.
+- Combined chaos + load test: Wire `tests/chaos/test_chaos.py` and `tests/load/locustfile.py` together in a new Makefile target `load-chaos` that runs both simultaneously.
+
+**Multi-region:**
+- `infrastructure/terraform/multi-region.tf` has the architecture designed (3-region GeoDNS with Route53). The MSK MirrorMaker config and Redis Global Datastore config are missing. Estimate: 3-4 weeks of infrastructure work. Required before: any revenue target that implies geographic availability SLA.
+
+**ML platform:**
+- Schema evolution strategy: The Protobuf schemas in `protos/` use `proto3` which has backward compatibility, but there is no versioning strategy for Redis feature keys or Kafka message schemas. Define a schema versioning policy and wire Schema Registry validation to all Kafka producers.
+- Data lineage: Apache Atlas or OpenLineage integration to track data provenance from raw events to model training data to deployed model.
+- Performance profiling: `monitoring/pprof.yaml` exists. Wire it to the FastAPI serving layer using `pyinstrument` for flame graph generation on-demand.
+
+---
+
+## Critical Files for Implementation
+
+- `/d/Claude Code Practice/ML Recommendation Engine/services/serving/main.py` — CORS fix, config validation, coalescing middleware registration, and the GDPR deletion endpoint all modify or depend on this file as the application entry point
+- `/d/Claude Code Practice/ML Recommendation Engine/docker-compose.yml` — All Phase 1 security fixes (hardcoded credentials, Redis auth, Kafka auth) are concentrated here; fixing this file correctly gates the dev environment security posture
+- `/d/Claude Code Practice/ML Recommendation Engine/streaming/user_embeddings/user_embedding_job.py` — The most critical incomplete streaming component; real-time user embeddings directly determine retrieval quality and are the centerpiece of the Phase 3 streaming completion
+- `/d/Claude Code Practice/ML Recommendation Engine/infrastructure/argocd/application.yaml` — The GitOps wiring that connects everything: Vault, Milvus, ELK, Flink, and all services need child Application manifests here before production deployment is reproducible and auditable
+- `/d/Claude Code Practice/ML Recommendation Engine/ml/pipelines/data_purge.py` — The GDPR compliance implementation; completing this file with real deletion execution and audit trail writing is the difference between a legally compliant system and a regulatory liability

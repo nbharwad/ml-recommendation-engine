@@ -1,0 +1,370 @@
+syntax = "proto3";
+
+package recommendation.v1;
+
+option go_package = "github.com/rec-system/protos/gen/go/recommendation/v1";
+option java_package = "com.recsystem.protos.recommendation.v1";
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// Common Types
+// ============================================================================
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_VIEW = 1;
+  EVENT_TYPE_CLICK = 2;
+  EVENT_TYPE_ADD_TO_CART = 3;
+  EVENT_TYPE_PURCHASE = 4;
+  EVENT_TYPE_SEARCH = 5;
+  EVENT_TYPE_REMOVE_FROM_CART = 6;
+}
+
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_WEB = 1;
+  PLATFORM_IOS = 2;
+  PLATFORM_ANDROID = 3;
+}
+
+enum PageContext {
+  PAGE_CONTEXT_UNSPECIFIED = 0;
+  PAGE_CONTEXT_HOME = 1;
+  PAGE_CONTEXT_PDP = 2;
+  PAGE_CONTEXT_CART = 3;
+  PAGE_CONTEXT_SEARCH = 4;
+  PAGE_CONTEXT_CATEGORY = 5;
+  PAGE_CONTEXT_CHECKOUT = 6;
+}
+
+message FeatureValue {
+  oneof value {
+    double float_val = 1;
+    int64 int_val = 2;
+    string string_val = 3;
+    bytes embedding_val = 4;
+    FloatList list_val = 5;
+  }
+}
+
+message FloatList {
+  repeated double values = 1;
+}
+
+message FeatureVector {
+  string entity_id = 1;
+  map<string, FeatureValue> features = 2;
+  int64 feature_timestamp_ms = 3;
+  string feature_set_version = 4;
+}
+
+// ============================================================================
+// Event Ingestion Service
+// ============================================================================
+
+service EventIngestionService {
+  rpc IngestEvent(IngestEventRequest) returns (IngestEventResponse);
+  rpc IngestBatch(IngestBatchRequest) returns (IngestBatchResponse);
+}
+
+message IngestEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+  string session_id = 3;
+  EventType event_type = 4;
+  string item_id = 5;
+  map<string, string> metadata = 6;
+  int64 timestamp_ms = 7;
+  Platform platform = 8;
+}
+
+message IngestEventResponse {
+  string event_id = 1;
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_ACCEPTED = 1;
+    STATUS_REJECTED = 2;
+    STATUS_RATE_LIMITED = 3;
+  }
+  Status status = 2;
+  string error_message = 3;
+}
+
+message IngestBatchRequest {
+  repeated IngestEventRequest events = 1;
+}
+
+message IngestBatchResponse {
+  int32 accepted_count = 1;
+  int32 rejected_count = 2;
+  repeated IngestEventResponse results = 3;
+}
+
+// ============================================================================
+// Feature Service
+// ============================================================================
+
+service FeatureService {
+  rpc GetUserFeatures(GetUserFeaturesRequest) returns (FeatureVector);
+  rpc GetItemFeatures(GetItemFeaturesRequest) returns (FeatureVector);
+  rpc GetBatchItemFeatures(GetBatchItemFeaturesRequest) returns (BatchFeatureVector);
+  rpc GetCrossFeatures(GetCrossFeaturesRequest) returns (FeatureVector);
+}
+
+message GetUserFeaturesRequest {
+  string user_id = 1;
+  repeated string feature_names = 2;  // empty = all features
+}
+
+message GetItemFeaturesRequest {
+  string item_id = 1;
+  repeated string feature_names = 2;
+}
+
+message GetBatchItemFeaturesRequest {
+  repeated string item_ids = 1;
+  repeated string feature_names = 2;
+}
+
+message BatchFeatureVector {
+  repeated FeatureVector vectors = 1;
+}
+
+message GetCrossFeaturesRequest {
+  string user_id = 1;
+  string item_id = 2;
+}
+
+// ============================================================================
+// Retrieval Service
+// ============================================================================
+
+service RetrievalService {
+  rpc RetrieveCandidates(RetrievalRequest) returns (CandidateSet);
+}
+
+message RetrievalRequest {
+  string user_id = 1;
+  bytes user_embedding = 2;                // 128-dim float32 serialized
+  PageContext page_context = 3;
+  int32 num_candidates = 4;               // target: 500-1000
+  repeated string exclude_item_ids = 5;   // already seen, purchased
+  map<string, string> filters = 6;        // category, price_range, in_stock
+  string request_id = 7;
+}
+
+message CandidateSet {
+  repeated ScoredCandidate candidates = 1;
+  map<string, int32> source_counts = 2;   // source -> count
+  int64 retrieval_latency_us = 3;
+}
+
+message ScoredCandidate {
+  string item_id = 1;
+  float retrieval_score = 2;
+  string source = 3;  // ANN, CF, TRENDING, RULE_BASED, POPULARITY
+}
+
+// ============================================================================
+// Ranking Service
+// ============================================================================
+
+service RankingService {
+  rpc RankCandidates(RankingRequest) returns (RankedResult);
+}
+
+message RankingRequest {
+  string user_id = 1;
+  repeated ScoredCandidate candidates = 2;
+  FeatureVector user_features = 3;
+  repeated FeatureVector item_features = 4;
+  RankingContext context = 5;
+  string model_version = 6;
+  string experiment_id = 7;
+  string request_id = 8;
+}
+
+message RankingContext {
+  PageContext page_context = 1;
+  string search_query = 2;
+  int64 timestamp_ms = 3;
+  string device_type = 4;
+  string locale = 5;
+}
+
+message RankedResult {
+  repeated RankedItem items = 1;
+  string model_version = 2;
+  int64 inference_latency_us = 3;
+  map<string, float> model_metadata = 4;
+}
+
+message RankedItem {
+  string item_id = 1;
+  float score = 2;
+  map<string, float> sub_scores = 3;
+}
+
+// ============================================================================
+// Re-Ranking Service
+// ============================================================================
+
+service ReRankingService {
+  rpc ReRank(ReRankRequest) returns (ReRankedResult);
+}
+
+message ReRankRequest {
+  repeated RankedItem items = 1;
+  ReRankingConfig config = 2;
+  repeated BusinessRule rules = 3;
+  string user_segment = 4;
+  string request_id = 5;
+}
+
+message ReRankingConfig {
+  float diversity_lambda = 1;       // MMR lambda, default 0.7
+  int32 max_same_category = 2;     // max items from same category in top-N
+  int32 max_same_brand = 3;
+  float freshness_boost = 4;       // boost for items < 7 days old
+  int32 output_size = 5;           // default 20
+}
+
+message BusinessRule {
+  string rule_id = 1;
+  string rule_type = 2;            // PROMOTE, DEMOTE, FILTER, SLOT
+  string condition = 3;            // JSON condition
+  map<string, string> parameters = 4;
+}
+
+message ReRankedResult {
+  repeated FinalItem items = 1;
+  map<string, float> diversity_metrics = 2;
+  int64 rerank_latency_us = 3;
+}
+
+message FinalItem {
+  string item_id = 1;
+  int32 position = 2;
+  float final_score = 3;
+  float relevance_score = 4;
+  float diversity_score = 5;
+  map<string, string> annotations = 6;  // "promoted", "boosted", etc.
+}
+
+// ============================================================================
+// Recommendation Service (External-Facing)
+// ============================================================================
+
+service RecommendationService {
+  rpc GetRecommendations(GetRecommendationsRequest) returns (GetRecommendationsResponse);
+  rpc GetSimilarItems(GetSimilarItemsRequest) returns (GetRecommendationsResponse);
+  rpc GetPersonalizedFeed(GetFeedRequest) returns (GetFeedResponse);
+}
+
+message GetRecommendationsRequest {
+  string user_id = 1;
+  string session_id = 2;
+  PageContext page_context = 3;
+  int32 num_items = 4;              // default 20
+  string request_id = 5;
+  map<string, string> client_context = 6;
+}
+
+message GetRecommendationsResponse {
+  repeated RecommendedItem items = 1;
+  string request_id = 2;
+  string experiment_id = 3;
+  int64 total_latency_ms = 4;
+  FallbackInfo fallback = 5;
+}
+
+message RecommendedItem {
+  string item_id = 1;
+  int32 position = 2;
+  float score = 3;
+  string explanation = 4;
+  map<string, string> tracking = 5;
+}
+
+message FallbackInfo {
+  bool fallback_used = 1;
+  string fallback_reason = 2;       // feature_store_down, model_timeout, etc.
+  string fallback_type = 3;         // popularity, cached, segment
+}
+
+message GetSimilarItemsRequest {
+  string item_id = 1;
+  int32 num_items = 2;
+  string user_id = 3;              // optional, for personalization
+  string request_id = 4;
+}
+
+message GetFeedRequest {
+  string user_id = 1;
+  string session_id = 2;
+  int32 page_size = 3;            // default 20
+  string cursor = 4;              // pagination cursor
+  string request_id = 5;
+}
+
+message GetFeedResponse {
+  repeated RecommendedItem items = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+  string request_id = 4;
+}
+
+// ============================================================================
+// Experimentation Service
+// ============================================================================
+
+service ExperimentationService {
+  rpc GetAssignment(GetAssignmentRequest) returns (Assignment);
+  rpc LogExposure(LogExposureRequest) returns (LogExposureResponse);
+}
+
+message GetAssignmentRequest {
+  string user_id = 1;
+  string experiment_namespace = 2;  // e.g., "recommendation"
+}
+
+message Assignment {
+  string experiment_id = 1;
+  string variant = 2;
+  map<string, string> parameters = 3;
+}
+
+message LogExposureRequest {
+  string user_id = 1;
+  string experiment_id = 2;
+  string variant = 3;
+  string request_id = 4;
+  int64 timestamp_ms = 5;
+}
+
+message LogExposureResponse {
+  bool accepted = 1;
+}
+
+// ============================================================================
+// Health Check (Standard gRPC Health)
+// ============================================================================
+
+service HealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+  map<string, string> details = 2;
+}

@@ -1,0 +1,354 @@
+# ============================================================================
+# Additional Kubernetes Manifests
+# Feature Store, Retrieval, Ingestion, and Namespace setup
+# ============================================================================
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: recommendation
+  labels:
+    istio-injection: enabled
+    team: ml-platform
+
+---
+# Resource Quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: recommendation-quota
+  namespace: recommendation
+spec:
+  hard:
+    requests.cpu: "200"
+    requests.memory: "500Gi"
+    limits.cpu: "400"
+    limits.memory: "1Ti"
+    pods: "500"
+    services: "50"
+    persistentvolumeclaims: "50"
+    requests.nvidia.com/gpu: "20"
+
+---
+# Network Policy — restrict egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: recommendation-network-policy
+  namespace: recommendation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: recommendation
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: recommendation
+    - to:  # Allow DNS
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    - to:  # Allow external (Redis, Kafka, S3)
+        - ipBlock:
+            cidr: 0.0.0.0/0
+
+---
+# Feature Store Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-store
+  namespace: recommendation
+  labels:
+    app: feature-store
+    component: features
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: feature-store
+  template:
+    metadata:
+      labels:
+        app: feature-store
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "recommendation-serving"
+        vault.hashicorp.com/agent-inject-secret-redis: "secret/data/recommendation/redis"
+    spec:
+      # Schedule on memory-optimized nodes
+      nodeSelector:
+        node-type: memory
+      containers:
+        - name: feature-store
+          image: ${ECR_REGISTRY}/feature-store:${IMAGE_TAG}
+          ports:
+            - containerPort: 50051
+              name: grpc
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secrets
+                  key: redis-host
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secrets
+                  key: redis-password
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 5
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-store
+  namespace: recommendation
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50051
+      targetPort: 50051
+      name: grpc
+  selector:
+    app: feature-store
+
+---
+# Retrieval Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieval
+  namespace: recommendation
+  labels:
+    app: retrieval
+    component: retrieval
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: retrieval
+  template:
+    metadata:
+      labels:
+        app: retrieval
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+    spec:
+      nodeSelector:
+        node-type: memory
+      containers:
+        - name: retrieval
+          image: ${ECR_REGISTRY}/retrieval:${IMAGE_TAG}
+          ports:
+            - containerPort: 50052
+              name: grpc
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: MILVUS_HOST
+              value: "milvus-proxy.milvus.svc.cluster.local"
+            - name: MILVUS_PORT
+              value: "19530"
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "4Gi"
+            limits:
+              cpu: "4000m"
+              memory: "8Gi"
+          readinessProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrieval
+  namespace: recommendation
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50052
+      targetPort: 50052
+      name: grpc
+  selector:
+    app: retrieval
+
+---
+# Ingestion Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  namespace: recommendation
+  labels:
+    app: ingestion
+    component: ingestion
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9093"
+    spec:
+      containers:
+        - name: ingestion
+          image: ${ECR_REGISTRY}/ingestion:${IMAGE_TAG}
+          ports:
+            - containerPort: 50056
+              name: grpc
+            - containerPort: 9093
+              name: metrics
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka.kafka.svc.cluster.local:9092"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          readinessProbe:
+            grpc:
+              port: 50056
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion
+  namespace: recommendation
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50056
+      targetPort: 50056
+      name: grpc
+  selector:
+    app: ingestion
+
+---
+# Experimentation Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experimentation
+  namespace: recommendation
+  labels:
+    app: experimentation
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: experimentation
+  template:
+    metadata:
+      labels:
+        app: experimentation
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9094"
+    spec:
+      containers:
+        - name: experimentation
+          image: ${ECR_REGISTRY}/experimentation:${IMAGE_TAG}
+          ports:
+            - containerPort: 50055
+              name: grpc
+            - containerPort: 9094
+              name: metrics
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: experimentation
+  namespace: recommendation
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50055
+      targetPort: 50055
+      name: grpc
+  selector:
+    app: experimentation
+
+---
+# Secrets (sealed — decrypt with cluster key)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: recommendation-secrets
+  namespace: recommendation
+type: Opaque
+data:
+  # Base64 encoded — in production use Sealed Secrets or External Secrets Operator
+  redis-host: cmVkaXMuZXhhbXBsZS5jb20=
+  redis-password: c3VwZXJzZWNyZXQ=
+
+---
+# Persistent Volume for Model Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-store-pvc
+  namespace: recommendation
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 100Gi

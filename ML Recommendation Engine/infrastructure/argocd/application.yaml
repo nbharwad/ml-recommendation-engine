@@ -1,0 +1,227 @@
+# ============================================================================
+# ArgoCD — GitOps Deployment Configuration
+# Continuous delivery for all recommendation system services
+# ============================================================================
+#
+# Strategy:
+# - All K8s manifests live in Git (infrastructure/kubernetes/)
+# - ArgoCD watches this repo and auto-syncs on push to main
+# - Production: requires manual approval (sync policy: manual)
+# - Staging: auto-syncs (sync policy: automated)
+# - Dev: auto-syncs with self-heal enabled
+#
+# App of Apps pattern:
+#   recommendation-root-app → individual service apps
+#                           → infrastructure apps (monitoring, istio, kafka)
+# ============================================================================
+
+---
+# Root App (App of Apps pattern)
+# This deploys all other apps automatically
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: recommendation-system-root
+  namespace: argocd
+  labels:
+    project: recommendation-system
+    environment: ${ENVIRONMENT}
+  # Cascade delete: deleting this deletes all child apps
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/company/recommendation-system.git
+    targetRevision: HEAD
+    path: infrastructure/argocd/apps/${ENVIRONMENT}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true     # Remove resources deleted from Git
+      selfHeal: true  # Re-apply if manually modified
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+
+---
+# ArgoCD Project — scopes permissions
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: recommendation-system
+  namespace: argocd
+spec:
+  description: "Real-Time Recommendation System"
+
+  # Allowed source repos
+  sourceRepos:
+    - "https://github.com/company/recommendation-system.git"
+    - "https://helm.releases.hashicorp.com"
+    - "https://prometheus-community.github.io/helm-charts"
+    - "https://grafana.github.io/helm-charts"
+    - "https://charts.bitnami.com/bitnami"
+
+  # Allowed target clusters and namespaces
+  destinations:
+    - namespace: recommendation
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+    - namespace: vault
+      server: https://kubernetes.default.svc
+    - namespace: flink
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+
+  # RBAC within ArgoCD
+  roles:
+    - name: ml-engineer
+      description: "ML engineers can view and sync non-prod"
+      policies:
+        - p, proj:recommendation-system:ml-engineer, applications, get, recommendation-system/*, allow
+        - p, proj:recommendation-system:ml-engineer, applications, sync, recommendation-system/*-dev, allow
+        - p, proj:recommendation-system:ml-engineer, applications, sync, recommendation-system/*-staging, allow
+      groups:
+        - company:ml-engineers
+
+    - name: prod-deployer
+      description: "Can deploy to production (restricted)"
+      policies:
+        - p, proj:recommendation-system:prod-deployer, applications, *, recommendation-system/*, allow
+      groups:
+        - company:ml-platform-leads
+
+  # Allowed cluster resources (cluster-scoped)
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
+
+---
+# Staging Application — Recommendation Services
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: recommendation-services-staging
+  namespace: argocd
+  labels:
+    environment: staging
+    component: services
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/company/recommendation-system.git
+    targetRevision: main
+    path: infrastructure/kubernetes
+    # Kustomize overlay for staging
+    kustomize:
+      namePrefix: ""
+      nameSuffix: ""
+      images:
+        - name: recommendation-serving
+          newTag: "${IMAGE_TAG}"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: recommendation
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+
+  # Ignore HPA current replica count (managed by HPA controller)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+
+  # Health checks
+  info:
+    - name: "Grafana"
+      value: "http://grafana.monitoring.svc/d/rec-system-overview"
+    - name: "Slack"
+      value: "#ml-platform-deployments"
+
+---
+# Production Application — Manual Sync Required
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: recommendation-services-prod
+  namespace: argocd
+  labels:
+    environment: prod
+    component: services
+  annotations:
+    # Notify Slack channel on sync
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: ml-platform-deployments
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: ml-platform-alerts
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/company/recommendation-system.git
+    targetRevision: main
+    path: infrastructure/kubernetes
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: recommendation
+
+  # NO automated sync for production — human approves
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false  # Namespace must already exist
+      - PrunePropagationPolicy=foreground
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+---
+# Monitoring Stack Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+spec:
+  project: recommendation-system
+
+  source:
+    repoURL: https://github.com/company/recommendation-system.git
+    targetRevision: main
+    path: infrastructure/kubernetes/monitoring
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: false  # Don't delete dashboards/alerts accidentally
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

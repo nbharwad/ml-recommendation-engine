@@ -1,0 +1,74 @@
+# ============================================================================
+# Vault Helm Values — Production Configuration
+# ============================================================================
+
+global:
+  enabled: true
+  tlsDisable: false
+
+server:
+  enabled: true
+  image:
+    tag: "1.17.2"
+
+  ha:
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        cluster_name = "recommendation-vault"
+        
+        storage "raft" {
+          path = "/vault/data"
+          retry_join {
+            leader_api_addr = "https://vault-0.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "https://vault-1.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "https://vault-2.vault-internal:8200"
+          }
+        }
+        
+        listener "tcp" {
+          address = "[::]:8200"
+          tls_disable = false
+          tls_cert_file = "/vault/userconfig/vault-tls/tls.crt"
+          tls_key_file = "/vault/userconfig/vault-tls/tls.key"
+        }
+        
+        service_registration "kubernetes" {}
+        
+        telemetry {
+          prometheus_retention_time = "30s"
+          disable_hostname = true
+        }
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    storageClassName: gp3
+
+  auditStorage:
+    enabled: true
+    size: 5Gi
+    storageClassName: gp3
+
+  standalone:
+    enabled: false
+
+injector:
+  enabled: true
+  image:
+    tag: "1.17.2"
+
+  metrics:
+    enabled: true
+    port: 9090
+
+ui:
+  enabled: true
+  serviceType: ClusterIP

@@ -1,0 +1,41 @@
+# ============================================================================
+# Ranking Service Dockerfile (GPU-enabled)
+# For deployment on GPU nodes with NVIDIA Triton
+# ============================================================================
+
+# Base: NVIDIA CUDA runtime
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 as runtime
+
+# Install Python
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3-pip \
+    python3.12-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Security: non-root user
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
+WORKDIR /app
+
+# Install dependencies
+COPY services/ranking/requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY services/ranking/ ./
+COPY protos/ ./protos/
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=3 \
+    CMD python3 -c "import httpx; r = httpx.get('http://localhost:9092/health'); r.raise_for_status()" || exit 1
+
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 50053 9092
+
+USER appuser
+
+CMD ["python3", "ranking_service.py"]

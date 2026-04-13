@@ -1,0 +1,177 @@
+# ============================================================================
+# Milvus Vector Database — Helm Values Configuration
+# Highly Available Deployment for ANN Retrieval
+# ============================================================================
+#
+# Architecture:
+# - Cluster mode: Distributes query, data, index, and root coord nodes
+# - Storage: minio/S3 for object storage, etcd for metadata, Pulsar for logs
+# - 8 Query nodes for high throughput (50K QPS total)
+# - Target latency: < 10ms for Top-100 out of 10M vectors
+#
+# Deployment:
+# helm repo add milvus https://zilliztech.github.io/milvus-helm/
+# helm install recommendation-milvus milvus/milvus -f milvus-ha-values.yaml
+# ============================================================================
+
+cluster:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Core Components
+# ---------------------------------------------------------------------------
+components:
+  # Query nodes (Handle the actual vector search)
+  # Scaled up for high read throughput (Targeting 50K QPS)
+  queryNode:
+    replicas: 8
+    resources:
+      requests:
+        memory: 16Gi
+        cpu: 4000m
+      limits:
+        memory: 32Gi
+        cpu: 8000m
+    nodeSelector:
+      node-type: memory
+
+  # Data nodes (Handle insert/delete ops)
+  dataNode:
+    replicas: 3
+    resources:
+      requests:
+        memory: 8Gi
+        cpu: 2000m
+      limits:
+        memory: 16Gi
+        cpu: 4000m
+    nodeSelector:
+      node-type: memory
+
+  # Index nodes (Build HNSW indexes from raw vectors)
+  indexNode:
+    replicas: 3
+    resources:
+      requests:
+        memory: 8Gi
+        cpu: 2000m
+      limits:
+        memory: 16Gi
+        cpu: 4000m
+    nodeSelector:
+      node-type: general
+
+# ---------------------------------------------------------------------------
+# Coordinators (Control Plane)
+# ---------------------------------------------------------------------------
+  rootCoord:
+    replicas: 2
+    activeStandby: true
+    nodeSelector:
+      node-type: general
+  
+  dataCoord:
+    replicas: 2
+    activeStandby: true
+    nodeSelector:
+      node-type: general
+  
+  queryCoord:
+    replicas: 2
+    activeStandby: true
+    nodeSelector:
+      node-type: general
+  
+  indexCoord:
+    replicas: 2
+    activeStandby: true
+    nodeSelector:
+      node-type: general
+
+# ---------------------------------------------------------------------------
+# Proxies (Access Layer)
+# ---------------------------------------------------------------------------
+  proxy:
+    replicas: 4
+    resources:
+      requests:
+        memory: 4Gi
+        cpu: 2000m
+      limits:
+        memory: 8Gi
+        cpu: 4000m
+    nodeSelector:
+      node-type: general
+
+# ---------------------------------------------------------------------------
+# Dependencies (etcd, MinIO, Pulsar)
+# ---------------------------------------------------------------------------
+etcd:
+  replicaCount: 3
+  persistence:
+    enabled: true
+    storageClass: "gp3"
+    size: 20Gi
+  nodeSelector:
+    node-type: general
+
+minio:
+  mode: distributed
+  replicas: 4
+  persistence:
+    storageClass: "gp3"
+    size: 200Gi
+  resources:
+    requests:
+      memory: 4Gi
+      cpu: 1000m
+  nodeSelector:
+    node-type: memory
+
+pulsar:
+  enabled: true
+  zookeeper:
+    replicaCount: 3
+    nodeSelector:
+      node-type: general
+  bookkeeper:
+    replicaCount: 3
+    volumes:
+      journal:
+        storageClassName: "gp3"
+        size: 50Gi
+      ledgers:
+        storageClassName: "gp3"
+        size: 100Gi
+    nodeSelector:
+      node-type: memory
+  broker:
+    replicaCount: 3
+    nodeSelector:
+      node-type: general
+
+# ---------------------------------------------------------------------------
+# Metric Collection
+# ---------------------------------------------------------------------------
+metrics:
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 15s
+    scrapeTimeout: 10s
+
+# ---------------------------------------------------------------------------
+# Security & Tolerations
+# ---------------------------------------------------------------------------
+authentication:
+  enabled: true  # Enables RBAC inside Milvus
+
+tolerations:
+  - key: "node.kubernetes.io/not-ready"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 300
+  - key: "node.kubernetes.io/unreachable"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 300

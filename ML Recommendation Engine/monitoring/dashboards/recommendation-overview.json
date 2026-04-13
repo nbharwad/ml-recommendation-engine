@@ -1,0 +1,289 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Real-Time Product Recommendation System — Production Dashboard",
+  "editable": true,
+  "title": "Recommendation System Overview",
+  "uid": "rec-system-overview",
+  "version": 1,
+  "panels": [
+    {
+      "title": "Request Rate (QPS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(recommendation_request_total[1m]))",
+          "legendFormat": "Total QPS"
+        },
+        {
+          "expr": "sum(rate(recommendation_request_total{status='success'}[1m]))",
+          "legendFormat": "Success QPS"
+        }
+      ]
+    },
+    {
+      "title": "Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(recommendation_request_latency_ms_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(recommendation_request_latency_ms_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(recommendation_request_latency_ms_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 50, "color": "yellow" },
+              { "value": 75, "color": "red" }
+            ]
+          },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(recommendation_request_total{status!='success'}[5m])) / sum(rate(recommendation_request_total[5m]))",
+          "legendFormat": "Error Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 0.001, "color": "yellow" },
+              { "value": 0.005, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Fallback Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(recommendation_fallback_total[5m])) / sum(rate(recommendation_request_total[5m]))",
+          "legendFormat": "Fallback Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 0.01, "color": "yellow" },
+              { "value": 0.05, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Circuit Breaker Status",
+      "type": "table",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "recommendation_circuit_breaker_state",
+          "legendFormat": "{{service}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "service": "Service",
+              "Value": "State (0=OK, 2=OPEN)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Cache Hit Rate (Feature Store L1)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(feature_store_l1_cache_hits_total[5m])) / (sum(rate(feature_store_l1_cache_hits_total[5m])) + sum(rate(feature_store_l1_cache_misses_total[5m])))",
+          "legendFormat": "L1 Hit Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "red" },
+              { "value": 0.5, "color": "yellow" },
+              { "value": 0.7, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Per-Component Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(recommendation_component_latency_ms_bucket[5m])) by (le, component))",
+          "legendFormat": "{{component}} p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "title": "Candidate Count Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "sum(rate(recommendation_candidate_count_bucket[5m])) by (le)",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "title": "GPU Utilization (Ranking)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "ranking_gpu_utilization_percent",
+          "legendFormat": "GPU Util %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 70, "color": "yellow" },
+              { "value": 90, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Model Version Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(ranking_model_version_total[5m])) by (model, version)",
+          "legendFormat": "{{model}} {{version}}"
+        }
+      ]
+    },
+    {
+      "title": "ANN Recall@100",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "retrieval_ann_recall_at_k{k='100'}",
+          "legendFormat": "Recall@100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "red" },
+              { "value": 0.8, "color": "yellow" },
+              { "value": 0.9, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Kafka Consumer Lag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 28 },
+      "targets": [
+        {
+          "expr": "kafka_consumer_group_lag{group=~'session-feature.*'}",
+          "legendFormat": "{{group}} {{topic}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 300000, "color": "yellow" },
+              { "value": 600000, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Experiment Assignments",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(experiment_assignment_total[5m])) by (experiment_id, variant)",
+          "legendFormat": "{{experiment_id}} - {{variant}}"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "type": "custom",
+        "current": { "value": "prod" },
+        "options": [
+          { "text": "prod", "value": "prod" },
+          { "text": "staging", "value": "staging" },
+          { "text": "dev", "value": "dev" }
+        ]
+      }
+    ]
+  }
+}

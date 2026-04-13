@@ -1,0 +1,160 @@
+# ============================================================================
+# Alert Rules — Recommendation System
+# SLO-based alerting with severity levels
+# ============================================================================
+
+groups:
+  # ===== Latency SLO =====
+  - name: recommendation.latency
+    rules:
+      - alert: RecommendationP99LatencyHigh
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(recommendation_request_latency_ms_bucket[5m])) by (le)
+          ) > 75
+        for: 5m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Recommendation p99 latency exceeds 75ms SLA"
+          description: "p99 latency is {{ $value }}ms (SLA: 75ms) for the last 5 minutes"
+          runbook: "https://wiki.internal/runbooks/rec-latency-high"
+      
+      - alert: RecommendationP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(recommendation_request_latency_ms_bucket[5m])) by (le)
+          ) > 60
+        for: 10m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "Recommendation p95 latency trending high"
+          description: "p95 latency is {{ $value }}ms — approaching SLA"
+
+  # ===== Error Rate =====
+  - name: recommendation.errors
+    rules:
+      - alert: RecommendationErrorRateHigh
+        expr: |
+          sum(rate(recommendation_request_total{status!="success"}[5m]))
+          / sum(rate(recommendation_request_total[5m])) > 0.005
+        for: 1m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Error rate exceeds 0.5%"
+          description: "Error rate: {{ $value | humanizePercentage }}"
+
+  # ===== Fallback Rate =====
+  - name: recommendation.fallback
+    rules:
+      - alert: RecommendationHighFallbackRate
+        expr: |
+          sum(rate(recommendation_fallback_total[5m]))
+          / sum(rate(recommendation_request_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "Recommendation fallback rate exceeds 5%"
+          description: "{{ $value | humanizePercentage }} of requests using fallback"
+      
+      - alert: RecommendationPopularityFallback
+        expr: |
+          sum(rate(recommendation_fallback_total{fallback_type="popularity"}[5m])) > 10
+        for: 2m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Popularity fallback active — full pipeline may be down"
+
+  # ===== Circuit Breakers =====
+  - name: recommendation.circuit_breakers
+    rules:
+      - alert: CircuitBreakerOpen
+        expr: recommendation_circuit_breaker_state == 2
+        for: 30s
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Circuit breaker OPEN for {{ $labels.service }}"
+          description: "{{ $labels.service }} circuit breaker is open — requests are failing fast"
+
+  # ===== Feature Store =====
+  - name: recommendation.features
+    rules:
+      - alert: FeatureStoreCacheHitRateLow
+        expr: |
+          sum(rate(feature_store_l1_cache_hits_total[5m]))
+          / (sum(rate(feature_store_l1_cache_hits_total[5m])) 
+             + sum(rate(feature_store_l1_cache_misses_total[5m]))) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "Feature store L1 cache hit rate below 50%"
+      
+      - alert: FeatureStoreRedisErrors
+        expr: sum(rate(feature_store_redis_errors_total[5m])) > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Feature store Redis errors increasing"
+
+  # ===== Ranking GPU =====
+  - name: recommendation.ranking
+    rules:
+      - alert: RankingGPUUtilizationHigh
+        expr: ranking_gpu_utilization_percent > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "Ranking GPU utilization above 90%"
+          description: "Consider scaling GPU pods or optimizing model"
+      
+      - alert: RankingFallbackToXGBoost
+        expr: sum(rate(ranking_fallback_total{reason="dlrm_failed"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "Ranking service falling back to XGBoost"
+
+  # ===== Retrieval =====
+  - name: recommendation.retrieval
+    rules:
+      - alert: ANNRecallDegraded
+        expr: retrieval_ann_recall_at_k{k="100"} < 0.80
+        for: 5m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "ANN recall@100 degraded below 80%"
+          description: "Possible index corruption. Current recall: {{ $value }}"
+
+  # ===== Kafka/Streaming =====
+  - name: recommendation.streaming
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: kafka_consumer_group_lag > 600000  # 10 minutes at 1K events/sec
+        for: 5m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "Kafka consumer lag exceeds 10 minutes"
+          description: "Consumer group lag: {{ $value }} messages"

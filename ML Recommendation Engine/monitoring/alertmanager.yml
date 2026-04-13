@@ -1,0 +1,149 @@
+# ============================================================================
+# Prometheus — Alertmanager Configuration
+# Routes alerts to correct destinations based on severity and team
+# ============================================================================
+#
+# Routing tree:
+#   All alerts → team: ml-platform
+#     - P1 (critical, >5min) → PagerDuty + Slack #ml-platform-alerts
+#     - P2 (warning)        → Slack #ml-platform-alerts  
+#     - Latency/SLO         → Slack #slo-alerts
+#     - Infrastructure      → Slack #infrastructure-alerts
+# ============================================================================
+
+global:
+  smtp_from: "alertmanager@recommendation.internal"
+  smtp_smarthost: "smtp.company.com:587"
+  resolve_timeout: 5m
+
+# ---------------------------------------------------------------------------
+# Templates
+# ---------------------------------------------------------------------------
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ---------------------------------------------------------------------------
+# Routing
+# ---------------------------------------------------------------------------
+
+route:
+  group_by: ["alertname", "namespace", "severity"]
+  group_wait: 30s       # Wait to group alerts before first notification
+  group_interval: 5m    # Wait before re-notifying same group
+  repeat_interval: 4h   # Resend if still firing
+  receiver: "slack-ml-platform"
+
+  routes:
+    # P1: Critical alerts → immediate PagerDuty + Slack
+    - match:
+        severity: critical
+      receiver: "pagerduty-and-slack"
+      group_wait: 0s        # Immediate
+      group_interval: 1m
+      repeat_interval: 30m
+
+    # Latency SLO breaches
+    - match_re:
+        alertname: "RecommendationP99.*|SLA.*"
+      receiver: "slack-slo"
+      group_by: ["alertname"]
+
+    # Circuit breaker open
+    - match:
+        alertname: "CircuitBreakerOpen"
+      receiver: "pagerduty-and-slack"
+      group_wait: 0s
+      repeat_interval: 15m
+
+    # ML-specific (model quality, drift)
+    - match_re:
+        alertname: ".*Recall.*|.*Fallback.*|.*Model.*"
+      receiver: "slack-ml-platform"
+
+    # Infrastructure alerts
+    - match_re:
+        alertname: "Kafka.*|Redis.*|GPU.*"
+      receiver: "slack-infrastructure"
+
+# ---------------------------------------------------------------------------
+# Receivers
+# ---------------------------------------------------------------------------
+
+receivers:
+  # Slack: ML Platform channel
+  - name: "slack-ml-platform"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_ML_PLATFORM}"
+        channel: "#ml-platform-alerts"
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} [{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Severity:* {{ .Labels.severity }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook }}
+          {{ end }}
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+
+  # Slack: SLO channel (latency, error rate)
+  - name: "slack-slo"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_SLO}"
+        channel: "#slo-alerts"
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🟡{{ else }}✅{{ end }} SLO Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+
+  # Slack: Infrastructure
+  - name: "slack-infrastructure"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_INFRA}"
+        channel: "#infrastructure-alerts"
+        send_resolved: true
+
+  # PagerDuty + Slack: P1 incidents
+  - name: "pagerduty-and-slack"
+    pagerduty_configs:
+      - routing_key: "${PAGERDUTY_ROUTING_KEY}"
+        severity: '{{ .GroupLabels.severity }}'
+        summary: '{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+        description: '{{ .CommonAnnotations.description }}'
+        client: "AlertManager"
+        client_url: "https://grafana.recommendation.internal"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_ML_PLATFORM}"
+        channel: "#ml-platform-alerts"
+        send_resolved: true
+        title: '🚨 P1 INCIDENT: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          *Runbook:* {{ .Annotations.runbook }}
+          PagerDuty incident created.
+          {{ end }}
+
+# ---------------------------------------------------------------------------
+# Inhibition Rules
+# ---------------------------------------------------------------------------
+
+inhibit_rules:
+  # If serving is down, suppress downstream alerts (they're expected)
+  - source_match:
+      alertname: RecommendationErrorRateHigh
+      severity: critical
+    target_match_re:
+      alertname: "Feature.*|Retrieval.*|Ranking.*"
+    equal: [namespace]
+
+  # GPU alerts inherit from serving down
+  - source_match:
+      alertname: CircuitBreakerOpen
+    target_match:
+      alertname: RankingFallbackToXGBoost
+    equal: [namespace]

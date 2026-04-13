@@ -1,0 +1,474 @@
+# ============================================================================
+# ELK Stack — Kubernetes Deployment
+# Centralized structured logging for all recommendation services
+# ============================================================================
+#
+# Stack:
+# - Filebeat (DaemonSet): collects container logs from each node
+# - Logstash (Deployment): parses, enriches, routes logs
+# - Elasticsearch (StatefulSet): stores and indexes logs
+# - Kibana (Deployment): visualization and search UI
+#
+# Log flow:
+#   Container stdout → Filebeat (node) → Logstash → Elasticsearch → Kibana
+#
+# Retention: 30 days (prod), 7 days (dev/staging)
+# Storage: gp3 EBS volumes (cost-efficient, fast enough for logging)
+#
+# Index strategy:
+# - recommendation-serving-YYYY.MM.DD
+# - recommendation-ranking-YYYY.MM.DD
+# - recommendation-errors-YYYY.MM.DD  (separate index for fast error search)
+# ============================================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+  labels:
+    istio-injection: disabled  # Don't inject Istio into logging stack (overhead)
+
+---
+# ============================================================
+# Elasticsearch
+# ============================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: logging
+  labels:
+    app: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 3  # 3-node cluster: 1 master + 2 data
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      nodeSelector:
+        node-type: memory
+      initContainers:
+        # Required by Elasticsearch: increase vm.max_map_count
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "sysctl -w vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "4Gi"
+            limits:
+              cpu: "4000m"
+              memory: "8Gi"
+          env:
+            - name: cluster.name
+              value: "rec-system-logs"
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: discovery.seed_hosts
+              value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
+            - name: cluster.initial_master_nodes
+              value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+            - name: ES_JAVA_OPTS
+              value: "-Xms4g -Xmx4g"
+            # Security
+            - name: xpack.security.enabled
+              value: "true"
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: password
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: 9200
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 500Gi  # prod sizing: ~50GB/day × 30 days
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: logging
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9200
+      name: http
+    - port: 9300
+      name: transport
+  selector:
+    app: elasticsearch
+
+---
+# ============================================================
+# Logstash — Log processing and routing
+# ============================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: logging
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    pipeline.workers: 4
+    pipeline.batch.size: 1000
+    pipeline.batch.delay: 50
+
+  pipelines.yml: |
+    - pipeline.id: recommendation
+      path.config: "/usr/share/logstash/pipeline/*.conf"
+
+  recommendation.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    
+    filter {
+      # Parse structlog JSON format
+      if [message] =~ /^\{/ {
+        json { source => "message" }
+      }
+      
+      # Extract service name from K8s metadata
+      if [kubernetes][labels][app] {
+        mutate {
+          add_field => { "service" => "%{[kubernetes][labels][app]}" }
+        }
+      }
+      
+      # Parse latency fields as numbers
+      if [latency_ms] {
+        mutate { convert => { "latency_ms" => "float" } }
+      }
+      
+      # Tag slow requests for fast search
+      if [latency_ms] and [latency_ms] > 75 {
+        mutate { add_tag => ["sla_breach"] }
+      }
+      
+      # Tag errors
+      if [level] in ["ERROR", "CRITICAL"] {
+        mutate { add_tag => ["error"] }
+      }
+      
+      # Remove noisy fields
+      mutate {
+        remove_field => ["agent", "ecs", "host.mac"]
+      }
+    }
+    
+    output {
+      # Main index: service-specific daily indices
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        user => "elastic"
+        password => "${ELASTIC_PASSWORD}"
+        index => "recommendation-%{service}-%{+YYYY.MM.dd}"
+        
+        # ILM: automatic rollover and deletion
+        ilm_enabled => true
+        ilm_rollover_alias => "recommendation-%{service}"
+        ilm_policy => "recommendation-logs-policy"
+      }
+      
+      # Error index: separate for fast incident response
+      if "error" in [tags] or "sla_breach" in [tags] {
+        elasticsearch {
+          hosts => ["http://elasticsearch:9200"]
+          user => "elastic"
+          password => "${ELASTIC_PASSWORD}"
+          index => "recommendation-errors-%{+YYYY.MM.dd}"
+        }
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.15.0
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: password
+          ports:
+            - containerPort: 5044
+              name: beats
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/logstash/config/logstash.yml
+              subPath: logstash.yml
+            - name: config
+              mountPath: /usr/share/logstash/config/pipelines.yml
+              subPath: pipelines.yml
+            - name: config
+              mountPath: /usr/share/logstash/pipeline/recommendation.conf
+              subPath: recommendation.conf
+      volumes:
+        - name: config
+          configMap:
+            name: logstash-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5044
+      name: beats
+  selector:
+    app: logstash
+
+---
+# ============================================================
+# Filebeat — DaemonSet on every node
+# ============================================================
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists  # Also collect logs from GPU nodes
+          effect: NoSchedule
+      hostPID: false
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:8.15.0
+          args: ["-c", "/etc/filebeat.yml", "-e"]
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "100Mi"
+            limits:
+              cpu: "200m"
+              memory: "200Mi"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            runAsUser: 0  # Needs root to access /var/log
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat.yml
+              subPath: filebeat.yml
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdocker
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: filebeat-config
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdocker
+          hostPath:
+            path: /var/lib/docker/containers
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: logging
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/containers/*recommendation*.log
+        - /var/log/containers/*flink*.log
+      processors:
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+              - logs_path:
+                  logs_path: "/var/log/containers/"
+    
+    processors:
+      - add_cloud_metadata: ~
+      - add_host_metadata: ~
+    
+    output.logstash:
+      hosts: ["logstash.logging.svc:5044"]
+      loadbalance: true
+    
+    logging.level: warning
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: logging
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: filebeat
+subjects:
+  - kind: ServiceAccount
+    name: filebeat
+    namespace: logging
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, pods, nodes]
+    verbs: [get, watch, list]
+
+---
+# ============================================================
+# Kibana — Dashboard and search UI
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.15.0
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200"
+            - name: ELASTICSEARCH_USERNAME
+              value: "kibana_system"
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: kibana-password
+            - name: SERVER_NAME
+              value: "kibana.recommendation.internal"
+          ports:
+            - containerPort: 5601
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 60
+            periodSeconds: 15
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5601
+  selector:
+    app: kibana

@@ -1,0 +1,63 @@
+# ============================================================================
+# Apache Flink Configuration
+# Highly-tuned settings for exactly-once streaming processing
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Checkpointing & Fault Tolerance
+# ---------------------------------------------------------------------------
+# Enables checkpointing for exactly-once state
+execution.checkpointing.interval: 60000
+execution.checkpointing.mode: EXACTLY_ONCE
+
+# Store checkpoints in S3 for permanent durability
+state.backend: rocksdb
+state.checkpoints.dir: s3://rec-system-checkpoints-${AWS_ACCOUNT_ID}/flink/
+state.savepoints.dir: s3://rec-system-checkpoints-${AWS_ACCOUNT_ID}/flink/savepoints/
+
+# RocksDB specific tuning for large state sizes (e.g. Session Windows)
+state.backend.rocksdb.localdir: /opt/flink/rocksdb
+state.backend.rocksdb.memory.managed: true
+state.backend.rocksdb.predefined-options: SPINNING_DISK_OPTIMIZED_HIGH_MEM
+
+# Max concurrent checkpoints to avoid massive I/O
+execution.checkpointing.max-concurrent-checkpoints: 1
+execution.checkpointing.min-pause: 10000
+
+# ---------------------------------------------------------------------------
+# High Availability (ZooKeeper/Kubernetes)
+# ---------------------------------------------------------------------------
+high-availability.type: kubernetes
+high-availability.cluster-id: rec-system-flink
+high-availability.storageDir: s3://rec-system-checkpoints-${AWS_ACCOUNT_ID}/flink/ha/
+
+# ---------------------------------------------------------------------------
+# Memory Management (TaskManagers)
+# ---------------------------------------------------------------------------
+# 8GB TaskManagers by default
+taskmanager.memory.process.size: 8192m
+taskmanager.memory.framework.heap.size: 128m
+taskmanager.memory.task.heap.size: 3000m
+taskmanager.memory.task.off-heap.size: 1000m
+taskmanager.memory.managed.size: 3000m  # Lots of managed memory for RocksDB
+taskmanager.memory.network.fraction: 0.1
+taskmanager.memory.network.min: 256m
+taskmanager.memory.network.max: 1024m
+
+# ---------------------------------------------------------------------------
+# JobManager Configuration
+# ---------------------------------------------------------------------------
+jobmanager.memory.process.size: 2048m
+taskmanager.numberOfTaskSlots: 4
+
+# ---------------------------------------------------------------------------
+# Monitoring & Metrics
+# ---------------------------------------------------------------------------
+metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+metrics.reporter.prom.port: 9249
+
+# ---------------------------------------------------------------------------
+# Python Config (PyFlink)
+# ---------------------------------------------------------------------------
+python.executable: /usr/bin/python3
+python.client.executable: /usr/bin/python3

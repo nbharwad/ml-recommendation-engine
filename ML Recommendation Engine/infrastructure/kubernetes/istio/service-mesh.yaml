@@ -1,0 +1,302 @@
+# ============================================================================
+# Istio Service Mesh — Gateway + VirtualService
+# mTLS, traffic management, and observability for recommendation services
+# ============================================================================
+#
+# Components deployed:
+# 1. Istio Gateway      — External entry point (replaces Nginx/Kong)
+# 2. VirtualService     — L7 routing rules per service
+# 3. DestinationRule    — mTLS + load balancing policy per service
+# 4. PeerAuthentication — Enforce mTLS within the namespace
+# 5. AuthorizationPolicy — Zero-trust: deny all → explicit allow
+#
+# Why Istio:
+# - mTLS between every pod pair: zero-trust networking
+# - Distributed tracing (integrates with Jaeger)
+# - Traffic splitting for canary rollouts (no code changes needed)
+# - Circuit breaking at L7 (complements our application-level breakers)
+# ============================================================================
+
+---
+# Ingress Gateway — public entry point
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: recommendation-gateway
+  namespace: recommendation
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: recommendation-tls-cert  # cert-manager Secret
+      hosts:
+        - "api.recommendation.internal"
+        - "recommendation.example.com"
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      # Redirect HTTP → HTTPS
+      tls:
+        httpsRedirect: true
+      hosts:
+        - "*"
+
+---
+# VirtualService — Recommendation Serving API
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: recommendation-serving
+  namespace: recommendation
+spec:
+  hosts:
+    - "api.recommendation.internal"
+    - "recommendation.example.com"
+  gateways:
+    - recommendation-gateway
+  http:
+    # Canary routing: 10% to new model version
+    # Controlled by Experiment assignments — but Istio provides infrastructure-level split
+    - match:
+        - headers:
+            x-canary:
+              exact: "true"
+      route:
+        - destination:
+            host: recommendation-serving
+            subset: canary
+          weight: 100
+
+    # Main traffic
+    - route:
+        - destination:
+            host: recommendation-serving
+            subset: stable
+          weight: 100
+
+      # Timeout must be < 75ms SLA
+      timeout: 80ms
+
+      # Retry on transient failures (not on 4xx — client errors)
+      retries:
+        attempts: 2
+        perTryTimeout: 35ms
+        retryOn: "5xx,reset,connect-failure,retriable-4xx"
+
+      # Fault injection for chaos testing (disabled in prod)
+      # fault:
+      #   delay:
+      #     percentage:
+      #       value: 0.1
+      #     fixedDelay: 5s
+
+---
+# DestinationRule — Serving service: mTLS + load balancing + circuit breaking
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: recommendation-serving
+  namespace: recommendation
+spec:
+  host: recommendation-serving
+  trafficPolicy:
+    # mTLS for all connections
+    tls:
+      mode: ISTIO_MUTUAL
+
+    # Load balancing: LEAST_REQUEST for latency-sensitive serving
+    loadBalancer:
+      simple: LEAST_REQUEST
+
+    # Connection pool limits (prevent thundering herd)
+    connectionPool:
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 100
+        h2UpgradePolicy: UPGRADE
+      tcp:
+        maxConnections: 500
+        connectTimeout: 5ms
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+
+    # Outlier detection (L7 circuit breaking)
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+
+---
+# DestinationRule — Feature Store
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: feature-store
+  namespace: recommendation
+spec:
+  host: feature-store
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      http:
+        http2MaxRequests: 2000
+        maxRequestsPerConnection: 200
+      tcp:
+        maxConnections: 1000
+        connectTimeout: 3ms
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 5s
+      baseEjectionTime: 15s
+
+---
+# DestinationRule — Retrieval
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: retrieval
+  namespace: recommendation
+spec:
+  host: retrieval
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: LEAST_REQUEST
+    connectionPool:
+      http:
+        http2MaxRequests: 1000
+      tcp:
+        maxConnections: 500
+        connectTimeout: 5ms
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+
+---
+# DestinationRule — Ranking (GPU)
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ranking
+  namespace: recommendation
+spec:
+  host: ranking
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: LEAST_REQUEST  # GPU nodes: send to least loaded
+    connectionPool:
+      http:
+        http2MaxRequests: 500
+      tcp:
+        maxConnections: 200
+        connectTimeout: 10ms
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 60s
+
+---
+# PeerAuthentication — Enforce mTLS for the entire namespace
+# No plaintext traffic allowed between pods
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: recommendation-mtls
+  namespace: recommendation
+spec:
+  mtls:
+    mode: STRICT  # STRICT = reject all non-mTLS
+
+---
+# AuthorizationPolicy — Default DENY all
+# Explicit allow rules below override this
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: recommendation
+spec: {}  # Empty spec = deny all
+
+---
+# AuthorizationPolicy — Allow ingress gateway → serving
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-to-serving
+  namespace: recommendation
+spec:
+  selector:
+    matchLabels:
+      app: recommendation-serving
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            methods: ["POST", "GET"]
+            paths: ["/v1/*", "/health", "/ready", "/metrics"]
+
+---
+# AuthorizationPolicy — Allow serving → downstream services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-serving-to-services
+  namespace: recommendation
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/recommendation/sa/recommendation-serving"
+      to:
+        - operation:
+            methods: ["POST"]
+
+---
+# AuthorizationPolicy — Allow Prometheus scraping
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: recommendation
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/monitoring/sa/prometheus"
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/metrics"]

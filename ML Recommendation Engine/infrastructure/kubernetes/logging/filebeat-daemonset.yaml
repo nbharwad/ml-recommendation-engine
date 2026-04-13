@@ -1,0 +1,104 @@
+# ============================================================================
+# Filebeat DaemonSet — Log Collection for ELK Stack
+# ============================================================================
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+  labels:
+    app: filebeat
+    component: logging
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      
+      containers:
+        - name: filebeat
+          image: elastic/filebeat:8.14.0
+          args:
+            - "--strict.perms=false"
+            - "-e"
+            - "--dark"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          
+          securityContext:
+            runAsUser: 0
+          
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+              readOnly: true
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      
+      volumes:
+        - name: config
+          configMap:
+            name: filebeat-config
+        - name: data
+          emptyDir: {}
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: logging
+data:
+  filebeat.yml: |
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          hints.enabled: true
+          templates:
+            - condition:
+                contains:
+                  container.name: serving
+              config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*-serving-*.log
+                  fields:
+                    service: serving
+              fields_under_root: true
+    
+    processors:
+      - add_kubernetes_metadata:
+          in_cluster: true
+      - add_host_metadata:
+          cache.ttl: 5m
+      - add_cloud_metadata:
+          enabled: true
+    
+    output.logstash:
+      hosts: ["logstash.logging.svc:5044"]
+      ssl.enabled: false
+    
+    logging.level: warning
