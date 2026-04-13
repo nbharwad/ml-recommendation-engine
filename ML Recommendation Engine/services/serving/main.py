@@ -36,13 +36,6 @@ from prometheus_client import Counter, Histogram, Gauge, generate_latest
 # Generated gRPC stubs
 from recommendation.v1 import recommendation_pb2_grpc
 
-from clients import (
-    FeatureStoreClient,
-    RetrievalClient,
-    RankingClient,
-    ReRankingClient,
-)
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -625,30 +618,11 @@ class RecommendationEngine:
         self.config = config
         self.logger = structlog.get_logger(component="recommendation_engine")
 
-        # Initialize clients with real gRPC stubs
-        self.feature_client = FeatureStoreClient(
-            config.feature_service.host,
-            config.feature_service.port,
-        )
-        self.feature_client.set_stub_class(recommendation_pb2_grpc.FeatureServiceStub)
-
-        self.retrieval_client = RetrievalClient(
-            config.retrieval_service.host,
-            config.retrieval_service.port,
-        )
-        self.retrieval_client.set_stub_class(recommendation_pb2_grpc.RetrievalServiceStub)
-
-        self.ranking_client = RankingClient(
-            config.ranking_service.host,
-            config.ranking_service.port,
-        )
-        self.ranking_client.set_stub_class(recommendation_pb2_grpc.RankingServiceStub)
-
-        self.reranking_client = ReRankingClient(
-            config.reranking_service.host,
-            config.reranking_service.port,
-        )
-        self.reranking_client.set_stub_class(recommendation_pb2_grpc.ReRankingServiceStub)
+        # Initialize clients
+        self.feature_client = FeatureStoreClient(config.feature_service)
+        self.retrieval_client = RetrievalClient(config.retrieval_service)
+        self.ranking_client = RankingClient(config.ranking_service)
+        self.reranking_client = ReRankingClient(config.reranking_service)
 
         self.experiment_client = ExperimentClient(config.experiment_service)
 
