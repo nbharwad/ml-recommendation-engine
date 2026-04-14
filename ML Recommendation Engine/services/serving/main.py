@@ -552,7 +552,8 @@ class PopularityFallback:
     Refreshed every 15 minutes from batch pipeline.
     """
 
-    def __init__(self):
+    def __init__(self, redis_client=None):
+        self._redis_client = redis_client
         # In production: loaded from Redis/S3, refreshed every 15 min
         self._global_popular: list[str] = [f"popular_{i:04d}" for i in range(100)]
         self._category_popular: dict[str, list[str]] = {
@@ -566,13 +567,34 @@ class PopularityFallback:
             "default": [f"def_{i:04d}" for i in range(50)],
         }
 
-    def get_fallback_recs(
+    async def get_fallback_recs(
         self,
         num_items: int = 20,
         category: str | None = None,
         user_segment: str | None = None,
     ) -> list[dict[str, Any]]:
         """Get fallback recommendations with priority: segment > category > global."""
+        import json
+        if self._redis_client:
+            try:
+                cache_key = f"popularity:fallback:{category}" if category else "popularity:fallback:global"
+                cached = await self._redis_client.get(cache_key)
+                if cached:
+                    items = json.loads(cached)[:num_items]
+                    source = f"redis_cache:{category or 'global'}"
+                    return [
+                        {
+                            "item_id": items[i],
+                            "position": i + 1,
+                            "score": 1.0 - (i * 0.01),
+                            "explanation": f"Popular in {source}",
+                            "tracking": {"source": "fallback", "fallback_type": source},
+                        }
+                        for i in range(len(items))
+                    ]
+            except Exception:
+                pass
+
         if user_segment and user_segment in self._segment_recs:
             item_ids = self._segment_recs[user_segment][:num_items]
             source = f"segment:{user_segment}"
@@ -814,7 +836,7 @@ class RecommendationEngine:
             fallback_info.fallback_type = "popularity"
             FALLBACK_COUNT.labels(fallback_type="popularity", reason="pipeline_failure").inc()
 
-            fallback_recs = self.popularity_fallback.get_fallback_recs(
+            fallback_recs = await self.popularity_fallback.get_fallback_recs(
                 num_items=request.num_items,
             )
             final_items = fallback_recs

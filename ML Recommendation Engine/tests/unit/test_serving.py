@@ -200,12 +200,14 @@ class TestPopularityFallback:
     def fallback(self):
         return PopularityFallback()
 
-    def test_returns_correct_count(self, fallback):
-        recs = fallback.get_fallback_recs(num_items=10)
+    @pytest.mark.asyncio
+    async def test_returns_correct_count(self, fallback):
+        recs = await fallback.get_fallback_recs(num_items=10)
         assert len(recs) == 10
 
-    def test_returns_proper_format(self, fallback):
-        recs = fallback.get_fallback_recs(num_items=5)
+    @pytest.mark.asyncio
+    async def test_returns_proper_format(self, fallback):
+        recs = await fallback.get_fallback_recs(num_items=5)
         for rec in recs:
             assert "item_id" in rec
             assert "position" in rec
@@ -213,20 +215,24 @@ class TestPopularityFallback:
             assert rec["position"] >= 1
             assert rec["score"] > 0
 
-    def test_segment_based_fallback(self, fallback):
-        recs = fallback.get_fallback_recs(user_segment="high_value")
+    @pytest.mark.asyncio
+    async def test_segment_based_fallback(self, fallback):
+        recs = await fallback.get_fallback_recs(user_segment="high_value")
         assert all("hv_" in r["item_id"] for r in recs)
 
-    def test_category_based_fallback(self, fallback):
-        recs = fallback.get_fallback_recs(category="electronics")
+    @pytest.mark.asyncio
+    async def test_category_based_fallback(self, fallback):
+        recs = await fallback.get_fallback_recs(category="electronics")
         assert all("elec_" in r["item_id"] for r in recs)
 
-    def test_global_fallback(self, fallback):
-        recs = fallback.get_fallback_recs()
+    @pytest.mark.asyncio
+    async def test_global_fallback(self, fallback):
+        recs = await fallback.get_fallback_recs()
         assert all("popular_" in r["item_id"] for r in recs)
 
-    def test_positions_are_sequential(self, fallback):
-        recs = fallback.get_fallback_recs(num_items=20)
+    @pytest.mark.asyncio
+    async def test_positions_are_sequential(self, fallback):
+        recs = await fallback.get_fallback_recs(num_items=20)
         positions = [r["position"] for r in recs]
         assert positions == list(range(1, 21))
 
