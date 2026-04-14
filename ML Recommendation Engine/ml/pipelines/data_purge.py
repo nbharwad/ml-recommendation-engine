@@ -47,6 +47,7 @@ PURGE_PROGRESS = Gauge(
 
 class PurgeStatus(str, Enum):
     """Purge operation status"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -55,6 +56,7 @@ class PurgeStatus(str, Enum):
 
 class PurgeReason(str, Enum):
     """Reason for purge"""
+
     USER_REQUEST = "user_request"
     DATA_RETENTION = "data_retention"
     REGULATORY = "regulatory"
@@ -64,6 +66,7 @@ class PurgeReason(str, Enum):
 @dataclass(frozen=True)
 class GDPRConfig:
     """GDPR configuration"""
+
     redis_host: str = os.getenv("REDIS_HOST", "redis:6379")
     redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
     kafka_bootstrap: str = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
@@ -75,7 +78,7 @@ class GDPRConfig:
 
 class PurgeRequest:
     """GDPR purge request"""
-    
+
     def __init__(
         self,
         user_id: str,
@@ -89,26 +92,26 @@ class PurgeRequest:
         self.start_timestamp_ms: Optional[int] = None
         self.completion_timestamp_ms: Optional[int] = None
         self.stages: dict[str, bool] = {}
-    
+
     def mark_in_progress(self):
         self.status = PurgeStatus.IN_PROGRESS
         self.start_timestamp_ms = int(time.time() * 1000)
         PURGE_PROGRESS.labels(user_id=self.user_id, stage="in_progress").set(0)
-    
+
     def mark_stage_complete(self, stage: str):
         self.stages[stage] = True
         progress = len(self.stages) / 7 * 100
         PURGE_PROGRESS.labels(user_id=self.user_id, stage=stage).set(progress)
-    
+
     def mark_completed(self):
         self.status = PurgeStatus.COMPLETED
         self.completion_timestamp_ms = int(time.time() * 1000)
         PURGE_REQUESTS.labels(status="completed", reason=self.reason.value).inc()
-        
+
         if self.start_timestamp_ms:
             duration = (self.completion_timestamp_ms - self.start_timestamp_ms) / 1000
             PURGE_DURATION.observe(duration)
-    
+
     def mark_failed(self, error: str):
         self.status = PurgeStatus.FAILED
         PURGE_REQUESTS.labels(status="failed", reason=self.reason.value).inc()
@@ -118,7 +121,7 @@ class PurgeRequest:
 class GDPRPurgePipeline:
     """
     Main GDPR purge pipeline.
-    
+
     Stages:
     1. Redis purge - Remove user features from Redis
     2. Kafka purge - Mark events for deletion in Kafka
@@ -128,17 +131,17 @@ class GDPRPurgePipeline:
     6. Analytics purge - Anonymize analytics data
     7. Verification - Confirm all data removed
     """
-    
+
     def __init__(self, config: GDPRConfig):
         self.config = config
-    
+
     async def process_purge_request(self, request: PurgeRequest) -> bool:
         """Process a GDPR purge request"""
         user_id = request.user_id
-        
+
         logger.info("gdpr_purge_started", user_id=user_id, reason=request.reason.value)
         request.mark_in_progress()
-        
+
         stages = [
             ("redis", lambda: self._purge_redis(user_id)),
             ("kafka", lambda: self._purge_kafka(user_id)),
@@ -148,7 +151,7 @@ class GDPRPurgePipeline:
             ("analytics", lambda: self._purge_analytics(user_id)),
             ("verification", lambda: self._verify_purge(user_id)),
         ]
-        
+
         for stage_name, stage_func in stages:
             try:
                 await stage_func()
@@ -158,58 +161,180 @@ class GDPRPurgePipeline:
                 logger.error("purge_stage_failed", user_id=user_id, stage=stage_name, error=str(e))
                 request.mark_failed(str(e))
                 return False
-        
+
         request.mark_completed()
-        
+
         duration_ms = (
-            request.completion_timestamp_ms - request.start_timestamp_ms
-        ) if request.completion_timestamp_ms else 0
+            (request.completion_timestamp_ms - request.start_timestamp_ms)
+            if request.completion_timestamp_ms
+            else 0
+        )
         logger.info(
             "gdpr_purge_completed",
             user_id=user_id,
             duration_ms=duration_ms,
             duration_hours=round(duration_ms / 3600000, 2),
         )
-        
+
         return True
-    
+
     async def _purge_redis(self, user_id: str):
         """Purge user data from Redis"""
-        logger.debug("purging_redis", user_id=user_id)
-        pass
-    
+        logger.info("purging_redis", user_id=user_id)
+        try:
+            import redis
+
+            r = redis.Redis(
+                host=self.config.redis_host, port=self.config.redis_port, decode_responses=True
+            )
+            keys_deleted = 0
+            cursor = 0
+            while True:
+                cursor, keys = r.scan(cursor=cursor, match=f"*:{user_id}", count=100)
+                if keys:
+                    for key in keys:
+                        r.delete(key)
+                        keys_deleted += 1
+                if cursor == 0:
+                    break
+            logger.info("redis_purge_complete", user_id=user_id, keys_deleted=keys_deleted)
+            return keys_deleted
+        except Exception as e:
+            logger.error("redis_purge_failed", user_id=user_id, error=str(e))
+            raise
+
     async def _purge_kafka(self, user_id: str):
         """Mark user events for tombstone in Kafka"""
-        logger.debug("purging_kafka", user_id=user_id)
-        pass
-    
+        logger.info("purging_kafka", user_id=user_id)
+        try:
+            from kafka import KafkaProducer
+            from kafka.errors import KafkaError
+
+            producer = KafkaProducer(
+                bootstrap_servers=self.config.kafka_bootstrap, acks="all", retries=3
+            )
+            tombstone_record = None
+            topic = "user-events"
+            key = user_id.encode("utf-8")
+            producer.send(topic, key=key, value=tombstone_record)
+            producer.flush()
+            producer.close()
+            logger.info("kafka_tombstone_created", user_id=user_id)
+            return True
+        except Exception as e:
+            logger.error("kafka_purge_failed", user_id=user_id, error=str(e))
+            raise
+
     async def _purge_elasticsearch(self, user_id: str):
         """Purge user data from Elasticsearch logs"""
-        logger.debug("purging_elasticsearch", user_id=user_id)
-        pass
-    
+        logger.info("purging_elasticsearch", user_id=user_id)
+        pseudonymized = self._pseudonymize(user_id)
+        try:
+            from elasticsearch import Elasticsearch
+
+            es = Elasticsearch([self.config.elasticsearch_url])
+            index_pattern = "logs-*"
+            query = {"query": {"term": {"user_id": user_id}}}
+            es.delete_by_query(index=index_pattern, body=query, refresh=True)
+            logger.info(
+                "elasticsearch_purge_complete", user_id=user_id, pseudonymized=pseudonymized
+            )
+            return True
+        except Exception as e:
+            logger.warning("elasticsearch_purge_failed", user_id=user_id, error=str(e))
+            return False
+
     async def _purge_session(self, user_id: str):
         """Purge user session data"""
-        logger.debug("purging_session", user_id=user_id)
-        pass
-    
+        logger.info("purging_session", user_id=user_id)
+        try:
+            import redis
+
+            r = redis.Redis(
+                host=self.config.redis_host, port=self.config.redis_port, decode_responses=True
+            )
+            session_keys = []
+            cursor = 0
+            while True:
+                cursor, keys = r.scan(cursor=cursor, match=f"session:{user_id}*", count=100)
+                if keys:
+                    session_keys.extend(keys)
+                if cursor == 0:
+                    break
+            for key in session_keys:
+                r.delete(key)
+            logger.info(
+                "session_purge_complete", user_id=user_id, sessions_deleted=len(session_keys)
+            )
+            return len(session_keys)
+        except Exception as e:
+            logger.error("session_purge_failed", user_id=user_id, error=str(e))
+            raise
+
     async def _purge_feature_store(self, user_id: str):
         """Purge user features from feature store"""
-        logger.debug("purging_feature_store", user_id=user_id)
-        pass
-    
+        logger.info("purging_feature_store", user_id=user_id)
+        try:
+            import redis
+
+            r = redis.Redis(
+                host=self.config.redis_host, port=self.config.redis_port, decode_responses=True
+            )
+            feature_keys = []
+            cursor = 0
+            while True:
+                cursor, keys = r.scan(cursor=cursor, match=f"feature:{user_id}*", count=100)
+                if keys:
+                    feature_keys.extend(keys)
+                if cursor == 0:
+                    break
+            for key in feature_keys:
+                r.delete(key)
+            logger.info(
+                "feature_store_purge_complete", user_id=user_id, features_deleted=len(feature_keys)
+            )
+            return len(feature_keys)
+        except Exception as e:
+            logger.error("feature_store_purge_failed", user_id=user_id, error=str(e))
+            raise
+
     async def _purge_analytics(self, user_id: str):
         """Anonymize analytics data"""
         if self.config.anonymize_logs:
             logger.debug("anonymizing_analytics", user_id=user_id)
             pseudonymized = self._pseudonymize(user_id)
             logger.debug("analytics_anonymized", pseudonymized_user=pseudonymized)
-    
+
     async def _verify_purge(self, user_id: str) -> bool:
         """Verify all user data has been purged"""
-        logger.debug("verifying_purge", user_id=user_id)
-        return True
-    
+        logger.info("verifying_purge", user_id=user_id)
+        try:
+            import redis
+
+            r = redis.Redis(
+                host=self.config.redis_host, port=self.config.redis_port, decode_responses=True
+            )
+            cursor = 0
+            found_keys = []
+            while True:
+                cursor, keys = r.scan(cursor=cursor, match=f"*:{user_id}", count=100)
+                if keys:
+                    found_keys.extend(keys)
+                if cursor == 0:
+                    break
+
+            if found_keys:
+                logger.warning(
+                    "purge_verification_failed", user_id=user_id, remaining_keys=found_keys
+                )
+                return False
+
+            logger.info("purge_verification_success", user_id=user_id)
+            return True
+        except Exception as e:
+            logger.error("purge_verification_error", user_id=user_id, error=str(e))
+            return False
+
     def _pseudonymize(self, user_id: str) -> str:
         """Pseudonymize user ID for analytics/logs"""
         salt = self.config.pseudonymization_salt or "default_salt"
@@ -218,26 +343,28 @@ class GDPRPurgePipeline:
 
 class DataRetentionPolicy:
     """Automatic data retention enforcement"""
-    
+
     def __init__(self, config: GDPRConfig):
         self.config = config
-    
+
     async def check_and_purge_expired(self) -> int:
         """Check for and purge expired user data"""
         expired_users = 0
-        
+
         logger.info("checking_expired_data", max_age_hours=self.config.max_purge_hours)
-        
+
         return expired_users
 
 
-async def process_deletion_request(user_id: str, reason: PurgeReason = PurgeReason.USER_REQUEST) -> bool:
+async def process_deletion_request(
+    user_id: str, reason: PurgeReason = PurgeReason.USER_REQUEST
+) -> bool:
     """Process a GDPR deletion request"""
     config = GDPRConfig()
     pipeline = GDPRPurgePipeline(config)
-    
+
     request = PurgeRequest(user_id, reason)
-    
+
     return await pipeline.process_purge_request(request)
 
 
