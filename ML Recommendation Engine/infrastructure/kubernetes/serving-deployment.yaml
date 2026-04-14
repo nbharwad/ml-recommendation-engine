@@ -87,6 +87,8 @@ spec:
                 secretKeyRef:
                   name: recommendation-secrets
                   key: jwt-jwks-uri
+            - name: ENABLE_STRICT_JWT
+              value: "true"
             - name: FEATURE_SERVICE_HOST
               value: "feature-store.recommendation.svc.cluster.local"
             - name: FEATURE_SERVICE_PORT
