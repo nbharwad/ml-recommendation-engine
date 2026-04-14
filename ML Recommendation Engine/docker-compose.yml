@@ -149,6 +149,17 @@ services:
     networks:
       - rec-network
   
+  schema-registry-init:
+    image: curlimages/curl:latest
+    depends_on: [schema-registry]
+    command: >
+      sh -c "sleep 20 &&
+      curl -X POST http://schema-registry:8081/subjects/user-events-value/versions
+      -H 'Content-Type: application/vnd.schemaregistry.v1+json'
+      -d '{\"schema\": \"{\\\"type\\\": \\\"record\\\", \\\"name\\\": \\\"UserEvent\\\", \\\"fields\\\": [{\\\"name\\\": \\\"user_id\\\", \\\"type\\\": \\\"string\\\"}, {\\\"name\\\": \\\"event_type\\\", \\\"type\\\": \\\"string\\\"}, {\\\"name\\\": \\\"timestamp\\\", \\\"type\\\": \\\"long\\\"}]}\"}'"
+    networks:
+      - rec-network
+   
   # Milvus (vector database for ANN search)
   etcd:
     image: quay.io/coreos/etcd:v3.5.16
@@ -192,6 +203,28 @@ services:
     networks:
       - rec-network
   
+  milvus-init:
+    image: pymilvus/pymilvus:latest
+    depends_on: [milvus-standalone]
+    command: >
+      sh -c "sleep 30 &&
+      python -c '
+      from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType
+      connections.connect(host=\"milvus-standalone\", port=\"19530\")
+      fields = [
+          FieldSchema(name=\"item_id\", dtype=DataType.INT64, is_primary=True),
+          FieldSchema(name=\"embedding\", dtype=DataType.FLOAT_VECTOR, dim=128)
+      ]
+      schema = CollectionSchema(fields=fields, description=\"item embeddings\")
+      collection = Collection(name=\"item_embeddings\", schema=schema)
+      index_params = {\"index_type\": \"HNSW\", \"M\": 16, \"efConstruction\": 256}
+      collection.create_index(field_name=\"embedding\", index_params=index_params)
+      collection.load()
+      print(\"Created item_embeddings collection\")
+      '"
+    networks:
+      - rec-network
+   
   # ===== Observability =====
   
   prometheus:
