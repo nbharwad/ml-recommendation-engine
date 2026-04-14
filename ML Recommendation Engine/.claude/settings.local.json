@@ -3,7 +3,11 @@
     "allow": [
       "Bash(xargs grep:*)",
       "Bash(xargs wc:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(pytest tests/unit/ -v --co)",
+      "Bash(pytest tests/unit/ -v)",
+      "Bash(pytest tests/unit/test_xgboost_baseline.py -v)",
+      "Bash(grep -v \"^$\\\\|coverage:\")"
     ]
   }
 }
