@@ -38,6 +38,7 @@ class AppSettings(BaseSettings):
 
     jwt_issuer: str = "https://auth.example.com"
     jwt_jwks_uri: str = "https://auth.example.com/.well-known/jwks.json"
+    jwt_audience: str = "recommendation-api"
 
     cors_allowed_origins: str = "http://localhost:3000"
 

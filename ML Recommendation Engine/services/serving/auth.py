@@ -206,37 +206,33 @@ async def get_current_user(request: Request) -> UserContext:
 
 
 async def validate_jwt(token: str) -> dict:
-    """
-    Validate JWT token and return claims.
+    """Validate JWT token using JWKS signature verification."""
+    from jose import jwt, JWTError
+    from jose.exceptions import ExpiredSignatureError
+    from jwt import PyJWKClient
+    from .config import get_app_settings
+    from fastapi import HTTPException
     
-    In production:
-    - Fetch JWKS from issuer
-    - Validate signature, expiration, issuer
-    - Return claims
-    
-    For development/testing, performs basic validation only.
-    """
-    import json
-    import base64
-    import hashlib
-    
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise ValueError("Invalid JWT format")
-    
-    payload_b64 = parts[1]
-    padding = 4 - len(payload_b64) % 4
-    if padding != 4:
-        payload_b64 += "=" * padding
-    
-    payload_json = base64.urlsafe_b64decode(payload_b64)
-    claims = json.loads(payload_json)
-    
-    exp = claims.get("exp", 0)
-    if exp > 0 and exp < time.time():
-        raise ValueError("Token expired")
-    
-    return claims
+    settings = get_app_settings()
+    try:
+        # Get JWKS from identity provider
+        jwks_client = PyJWKClient(settings.jwt_jwks_uri)
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=settings.jwt_audience,
+            issuer=settings.jwt_issuer,
+        )
+        return payload
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Validation error: {e}")
 
 
 async def get_audit_log(permission: str, user_id: str, result: str) -> None:
