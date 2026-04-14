@@ -20,12 +20,14 @@ Industry Standard:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from collections import defaultdict
 
@@ -108,15 +110,15 @@ class InFlightRequest:
     
     def __init__(self):
         self.start_time = time.time()
-        self.future: Optional[Future] = None
-        self.waiters: list[Future] = []
+        self.future: Optional[asyncio.Future] = None
+        self.waiters: list[asyncio.Future] = []
         self.response: Optional[Any] = None
         self.error: Optional[Exception] = None
         self.completed = False
         
-    def add_waiter(self) -> Future:
+    def add_waiter(self) -> asyncio.Future:
         """Add a waiter and return future."""
-        future = Future()
+        future = asyncio.get_event_loop().create_future()
         self.waiters.append(future)
         WAITER_COUNT.inc()
         return future
@@ -199,9 +201,10 @@ class RequestCoalescer:
     """
     
     def __init__(self, config: CoalescingConfig):
+        from cachetools import TTLCache
         self.config = config
         self.key_normalizer = RequestKey(config)
-        self.in_flight: dict[str, InFlightRequest] = {}
+        self.in_flight: TTLCache = TTLCache(maxsize=10_000, ttl=30)
         self.stats: dict[str, int] = defaultdict(int)
         
         if config.enable_bloom_filter:
@@ -389,10 +392,6 @@ async def coalesce_request(
         coalescer = create_coalescer()
     
     return await coalescer.execute(request_type, user_id, params, executor)
-
-
-# Import for math functions
-import math
 
 
 STATS = {}
