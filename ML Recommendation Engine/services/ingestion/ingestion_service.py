@@ -225,7 +225,9 @@ class EventIngestionService:
 
     async def _produce(self, event: dict[str, Any]):
         """Produce event to Kafka."""
-        key = event["user_id"].encode("utf-8")
+        import random
+        _salt = random.randint(0, 9)
+        key = f"{event['user_id']}_{_salt}".encode("utf-8")
         value = json.dumps(event).encode("utf-8")
 
         # In production:

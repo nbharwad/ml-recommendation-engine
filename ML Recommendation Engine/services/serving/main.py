@@ -646,7 +646,7 @@ class RecommendationEngine:
         }
 
         # Fallback
-        self.popularity_fallback = PopularityFallback()
+        self.popularity_fallback = PopularityFallback(self.redis)
 
     async def get_recommendations(
         self,

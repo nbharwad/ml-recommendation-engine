@@ -8,8 +8,9 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-
-import java.util.Map;
+import redis.clients.jedis.Pipeline;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RedisSink extends RichSinkFunction<String> {
 
@@ -17,6 +18,8 @@ public class RedisSink extends RichSinkFunction<String> {
 
     private final SessionFeatureConfig config;
     private transient JedisPool jedisPool;
+    private static final int BATCH_SIZE = 100;
+    private final List<String[]> writeBuffer = new ArrayList<>();
 
     public RedisSink(SessionFeatureConfig config) {
         this.config = config;
@@ -45,26 +48,42 @@ public class RedisSink extends RichSinkFunction<String> {
 
     @Override
     public void invoke(String value, Context context) {
-        try (Jedis jedis = jedisPool.getResource()) {
-            Map<String, Object> featureMap = parseFeatureString(value);
-            String redisKey = (String) featureMap.get("redis_key");
-            
-            if (redisKey != null && !redisKey.isEmpty()) {
-                featureMap.remove("redis_key");
-                String jsonValue = toJsonString(featureMap);
-                jedis.setex(redisKey, config.getRedisTtlSeconds(), jsonValue);
-                LOG.debug("Redis SET {} (TTL: {}s)", redisKey, config.getRedisTtlSeconds());
-            } else {
-                LOG.warn("No redis_key found in feature map, skipping write");
+        Map<String, Object> featureMap = parseFeatureString(value);
+        String redisKey = (String) featureMap.get("redis_key");
+        
+        if (redisKey != null && !redisKey.isEmpty()) {
+            featureMap.remove("redis_key");
+            String jsonValue = toJsonString(featureMap);
+            writeBuffer.add(new String[]{
+                redisKey,
+                String.valueOf(config.getRedisTtlSeconds()),
+                jsonValue
+            });
+            if (writeBuffer.size() >= BATCH_SIZE) {
+                flushBuffer();
             }
-        } catch (Exception e) {
-            LOG.error("Failed to write to Redis: {}", e.getMessage(), e);
-            throw new RuntimeException("Redis write failed", e);
+        } else {
+            LOG.warn("No redis_key found in feature map, skipping write");
         }
+    }
+
+    private void flushBuffer() {
+        if (writeBuffer.isEmpty()) return;
+        try (Jedis jedis = jedisPool.getResource()) {
+            Pipeline pipeline = jedis.pipelined();
+            for (String[] entry : writeBuffer) {
+                pipeline.setex(entry[0], Integer.parseInt(entry[1]), entry[2]);
+            }
+            pipeline.sync();
+        } catch (Exception e) {
+            LOG.error("Failed to flush Redis pipeline buffer", e);
+        }
+        writeBuffer.clear();
     }
 
     @Override
     public void close() {
+        flushBuffer();
         if (jedisPool != null && !jedisPool.isClosed()) {
             jedisPool.close();
             LOG.info("Redis sink closed");
