@@ -95,4 +95,7 @@ public class UserEmbeddingConfig {
 
     public Duration getWindowSize() { return Duration.ofMinutes(windowSizeMinutes); }
     public Duration getWindowSlide() { return Duration.ofMinutes(windowSlideMinutes); }
+
+    private String redisPassword = System.getenv().getOrDefault("REDIS_PASSWORD", "");
+    public String getRedisPassword() { return redisPassword; }
 }

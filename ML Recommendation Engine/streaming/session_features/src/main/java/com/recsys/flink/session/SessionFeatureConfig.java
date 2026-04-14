@@ -216,4 +216,7 @@ public class SessionFeatureConfig {
     public Duration getMaxOutOfOrdernessDuration() {
         return Duration.ofSeconds(maxOutOfOrdernessSeconds);
     }
+
+    private String redisPassword = System.getenv().getOrDefault("REDIS_PASSWORD", "");
+    public String getRedisPassword() { return redisPassword; }
 }

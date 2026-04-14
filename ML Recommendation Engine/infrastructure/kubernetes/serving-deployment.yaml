@@ -39,6 +39,18 @@ spec:
         vault.hashicorp.com/agent-inject-secret-redis: "secret/data/recommendation/redis"
         vault.hashicorp.com/agent-inject-secret-kafka: "secret/data/recommendation/kafka"
         vault.hashicorp.com/agent-inject-secret-milvus: "secret/data/recommendation/milvus"
+        vault.hashicorp.com/agent-inject-template-redis: |
+          {{- with secret "secret/data/recommendation/redis" -}}
+          export REDIS_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-template-kafka: |
+          {{- with secret "secret/data/recommendation/kafka" -}}
+          export KAFKA_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-template-milvus: |
+          {{- with secret "secret/data/recommendation/milvus" -}}
+          export MILVUS_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
     spec:
       serviceAccountName: recommendation-serving
       terminationGracePeriodSeconds: 30
@@ -60,6 +72,16 @@ spec:
       containers:
         - name: serving
           image: ${ECR_REGISTRY}/recommendation-serving:${IMAGE_TAG}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              source /vault/secrets/redis 2>/dev/null || true
+              source /vault/secrets/kafka 2>/dev/null || true
+              source /vault/secrets/milvus 2>/dev/null || true
+              exec uvicorn services.serving.main:app \
+                --host 0.0.0.0 \
+                --port 8080 \
+                --workers ${WORKERS:-4}
           ports:
             - containerPort: 8080
               name: http

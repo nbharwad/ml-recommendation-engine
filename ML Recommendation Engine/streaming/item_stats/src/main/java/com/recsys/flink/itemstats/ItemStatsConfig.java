@@ -104,4 +104,7 @@ public class ItemStatsConfig {
     public Duration getWindowSize() { return Duration.ofHours(windowSizeHours); }
     public Duration getWindowSlide() { return Duration.ofMinutes(windowSlideMinutes); }
     public Duration getMaxOutOfOrderness() { return Duration.ofSeconds(maxOutOfOrdernessSeconds); }
+
+    private String redisPassword = System.getenv().getOrDefault("REDIS_PASSWORD", "");
+    public String getRedisPassword() { return redisPassword; }
 }

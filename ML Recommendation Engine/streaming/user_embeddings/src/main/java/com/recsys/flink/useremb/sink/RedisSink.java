@@ -30,7 +30,14 @@ public class RedisSink extends RichSinkFunction<UserEmbedding> {
         poolConfig.setMaxTotal(20);
         poolConfig.setMaxIdle(10);
 
-        jedisPool = new JedisPool(poolConfig, config.getRedisHost(), config.getRedisPort());
+        String redisPassword = config.getRedisPassword();
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            jedisPool = new JedisPool(poolConfig, config.getRedisHost(),
+                                      config.getRedisPort(), 2000, redisPassword);
+        } else {
+            jedisPool = new JedisPool(poolConfig, config.getRedisHost(),
+                                      config.getRedisPort());
+        }
         LOG.info("User Embedding Redis sink connected");
     }
 

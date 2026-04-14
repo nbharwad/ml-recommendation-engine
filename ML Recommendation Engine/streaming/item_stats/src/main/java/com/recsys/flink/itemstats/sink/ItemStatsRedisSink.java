@@ -28,7 +28,14 @@ public class ItemStatsRedisSink extends RichSinkFunction<ItemStats> {
         poolConfig.setMaxIdle(10);
         poolConfig.setTestOnBorrow(true);
 
-        jedisPool = new JedisPool(poolConfig, config.getRedisHost(), config.getRedisPort());
+        String redisPassword = config.getRedisPassword();
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            jedisPool = new JedisPool(poolConfig, config.getRedisHost(),
+                                      config.getRedisPort(), 2000, redisPassword);
+        } else {
+            jedisPool = new JedisPool(poolConfig, config.getRedisHost(),
+                                      config.getRedisPort());
+        }
         LOG.info("Item Stats Redis sink connected to {}:{}", config.getRedisHost(), config.getRedisPort());
     }
 
