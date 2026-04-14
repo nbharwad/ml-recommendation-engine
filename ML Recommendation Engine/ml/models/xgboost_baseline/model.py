@@ -342,31 +342,30 @@ class XGBoostInference:
                 logging.warning(f"Failed to load XGBoost model: {e}, using fallback")
                 self._model = None
         else:
-            logging.warning("XGBoost not available, using random fallback")
+            logging.warning("XGBoost not available, using neutral 0.05 fallback")
 
+    def predict(self, features: np.ndarray) -> np.ndarray:
+        """
+        Predict P(click) for batch of items.
 
-def predict(self, features: np.ndarray) -> np.ndarray:
-    """
-    Predict P(click) for batch of items.
+        Args:
+            features: (batch_size, 42) float32
+        Returns:
+            (batch_size,) float32 probabilities
+        """
+        start = time.monotonic()
 
-    Args:
-        features: (batch_size, 42) float32
-    Returns:
-        (batch_size,) float32 probabilities
-    """
-    start = time.monotonic()
+        if self._model is not None and XGBOOST_AVAILABLE:
+            dmatrix = xgb.DMatrix(features, feature_names=XGBoostFeatureEngineer.FEATURE_NAMES)
+            predictions = self._model.predict(dmatrix)
+        else:
+            # Fallback: neutral predictions when model unavailable (not random)
+            predictions = np.full(features.shape[0], 0.05, dtype=np.float32)
 
-    if self._model is not None and XGBOOST_AVAILABLE:
-        dmatrix = xgb.DMatrix(features, feature_names=XGBoostFeatureEngineer.FEATURE_NAMES)
-        predictions = self._model.predict(dmatrix)
-    else:
-        # Fallback: neutral predictions when model unavailable (not random)
-        predictions = np.full(features.shape[0], 0.05, dtype=np.float32)
+        latency_ms = (time.monotonic() - start) * 1000
+        logging.debug(f"XGBoost inference: {features.shape[0]} items in {latency_ms:.1f}ms")
 
-    latency_ms = (time.monotonic() - start) * 1000
-    logging.debug(f"XGBoost inference: {features.shape[0]} items in {latency_ms:.1f}ms")
-
-    return predictions
+        return predictions
 
 
 # ---------------------------------------------------------------------------
